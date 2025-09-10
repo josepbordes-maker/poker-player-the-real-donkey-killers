@@ -66,6 +66,24 @@ Examples:
 - Precedence: JVM property/env var > config file > defaults.
 - To try a new strategy with a tiny commit, change only `strategy.json` and deploy.
 
+### Strategy Modes
+- TIGHT
+  - Risk mood: ~5% (`STRAT_RISK_FREQ` overridable)
+  - Small-bet call thresholds: 0.8× position baseline
+  - Late opens: only strong/decent hands (no weak‑but‑playable)
+- STANDARD (default)
+  - Risk mood: ~10%
+  - Small-bet call thresholds: 1.0× baseline
+  - Late opens: only strong/decent
+- LAG
+  - Risk mood: ~25%
+  - Small-bet call thresholds: 1.2× baseline
+  - Late opens: allow weak‑but‑playable hands
+
+Notes
+- `Player.version()` includes the active mode (e.g., `v1.2 (STANDARD)`) for quick verification.
+- You can globally dial risk/thresholds via `STRAT_RISK_FREQ` and `STRAT_SMALLBET_MULT` without changing the mode.
+
 ## Commit & Pull Request Guidelines
 - Commits: imperative, concise subject (e.g., "Add betting strategy and tests").
 - PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `Player.version()` when changing strategy.

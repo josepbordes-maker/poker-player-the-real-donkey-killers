@@ -102,6 +102,27 @@ The strategy aims to:
 - Avoid major losses through position discipline
 - Maintain balanced, unexploitable play
 
+## Strategy Modes
+
+Three runtime-selectable modes adjust risk and looseness without code changes:
+
+- TIGHT
+  - Risk mood: ~5%
+  - Call thresholds vs small bets: 0.8× position baseline (more folds)
+  - Late opens: do not open weak‑but‑playable hands; stick to decent+ only
+
+- STANDARD (default)
+  - Risk mood: ~10%
+  - Call thresholds: 1.0× position baseline
+  - Late opens: decent+ only (no weak‑but‑playable opens)
+
+- LAG (loose‑aggressive)
+  - Risk mood: ~25%
+  - Call thresholds: 1.2× position baseline (more calls)
+  - Late opens: allow weak‑but‑playable opens (e.g., suited/connected)
+
+How to select: set `STRAT_MODE=TIGHT|STANDARD|LAG` or edit `src/main/resources/strategy.json` (see AGENTS.md for overrides).
+
 ## Current Limitations & Future Enhancements
 
 ### Limitations
