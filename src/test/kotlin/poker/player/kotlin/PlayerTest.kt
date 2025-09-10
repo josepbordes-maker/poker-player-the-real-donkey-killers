@@ -38,45 +38,54 @@ class PlayerTest {
 
     @Test
     fun `opens stronger hands preflop`() {
-        val player = Player()
-        val state = baseState()
-        val me = state.getJSONArray("players").getJSONObject(0)
-        me.put("hole_cards", JSONArray().put(card("A", "spades")).put(card("K", "spades")))
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
+            val state = baseState()
+            val me = state.getJSONArray("players").getJSONObject(0)
+            me.put("hole_cards", JSONArray().put(card("A", "spades")).put(card("K", "spades")))
 
-        // No bet to call, should open ~3x BB = 30 (we used 6x small blind)
-        val bet = player.betRequest(state)
-        assertEquals(60, bet)
+            // No bet to call, should open ~3x BB = 30 (we used 6x small blind)
+            val bet = player.betRequest(state)
+            assertEquals(60, bet)
+        }
     }
 
     @Test
     fun `calls small bet with decent hand`() {
-        val player = Player()
-        val state = baseState()
-        val me = state.getJSONArray("players").getJSONObject(0)
-        me.put("hole_cards", JSONArray().put(card("Q", "hearts")).put(card("J", "hearts")))
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
+            val state = baseState()
+            val me = state.getJSONArray("players").getJSONObject(0)
+            me.put("hole_cards", JSONArray().put(card("Q", "hearts")).put(card("J", "hearts")))
 
-        state.put("current_buy_in", 10)
-        me.put("bet", 0)
-        state.put("pot", 100)
+            state.put("current_buy_in", 10)
+            me.put("bet", 0)
+            state.put("pot", 100)
 
-        val bet = player.betRequest(state)
-        assertEquals(10, bet) // call small bet
+            val bet = player.betRequest(state)
+            assertEquals(10, bet) // call small bet
+        }
     }
 
     @Test
     fun `min-raises with strong hand facing bet`() {
-        val player = Player()
-        val state = baseState()
-        val me = state.getJSONArray("players").getJSONObject(0)
-        me.put("hole_cards", JSONArray().put(card("Q", "diamonds")).put(card("Q", "clubs")))
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
+            val state = baseState()
+            val me = state.getJSONArray("players").getJSONObject(0)
+            me.put("hole_cards", JSONArray().put(card("Q", "diamonds")).put(card("Q", "clubs")))
 
-        state.put("current_buy_in", 40)
-        state.put("minimum_raise", 20)
-        state.put("pot", 100)
+            state.put("current_buy_in", 40)
+            state.put("minimum_raise", 20)
+            state.put("pot", 100)
 
-        val bet = player.betRequest(state)
-        // callAmount = 40, raise stronger -> 40 + 2*20 = 80
-        assertEquals(80, bet)
+            val bet = player.betRequest(state)
+            // callAmount = 40, raise stronger -> 40 + 2*20 = 80
+            assertEquals(80, bet)
+        }
     }
 
     @Test
@@ -97,76 +106,82 @@ class PlayerTest {
 
     @Test
     fun `blinds do not open-raise with only decent hand`() {
-        val player = Player()
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
 
-        // Create 3-player table and put us in blinds with no bet to call
-        val p0 = JSONObject().put("id", 0).put("name", "P0").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
-        val p1 = JSONObject().put("id", 1).put("name", "Me").put("status", "active").put("stack", 1000).put("bet", 0)
-        val p2 = JSONObject().put("id", 2).put("name", "P2").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
-        val players = JSONArray().put(p0).put(p1).put(p2)
+            // Create 3-player table and put us in blinds with no bet to call
+            val p0 = JSONObject().put("id", 0).put("name", "P0").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
+            val p1 = JSONObject().put("id", 1).put("name", "Me").put("status", "active").put("stack", 1000).put("bet", 0)
+            val p2 = JSONObject().put("id", 2).put("name", "P2").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
+            val players = JSONArray().put(p0).put(p1).put(p2)
 
-        val state = JSONObject()
-            .put("tournament_id", "t1")
-            .put("game_id", "g1")
-            .put("round", 0)
-            .put("bet_index", 0)
-            .put("small_blind", 10)
-            .put("current_buy_in", 0)
-            .put("pot", 0)
-            .put("minimum_raise", 20)
-            .put("dealer", 0) // dealer = 0, in_action = 1 -> relative = 1 (blinds)
-            .put("in_action", 1)
-            .put("players", players)
-            .put("community_cards", JSONArray())
+            val state = JSONObject()
+                .put("tournament_id", "t1")
+                .put("game_id", "g1")
+                .put("round", 0)
+                .put("bet_index", 0)
+                .put("small_blind", 10)
+                .put("current_buy_in", 0)
+                .put("pot", 0)
+                .put("minimum_raise", 20)
+                .put("dealer", 0) // dealer = 0, in_action = 1 -> relative = 1 (blinds)
+                .put("in_action", 1)
+                .put("players", players)
+                .put("community_cards", JSONArray())
 
-        // Give us a decent but non-premium hand (JTs)
-        p1.put("hole_cards", JSONArray().put(card("J", "spades")).put(card("10", "spades")))
+            // Give us a decent but non-premium hand (JTs)
+            p1.put("hole_cards", JSONArray().put(card("J", "spades")).put(card("10", "spades")))
 
-        val bet = player.betRequest(state)
-        assertEquals(0, bet)
+            val bet = player.betRequest(state)
+            assertEquals(0, bet)
+        }
     }
     
     // === INTEGRATION TESTS FOR NEW STRATEGY ===
     
     @Test
     fun `blinds open-raise strong hands but check decent hands`() {
-        val player = Player()
-        
-        // Create multi-player table with us in blinds position
-        val p0 = JSONObject().put("id", 0).put("name", "P0").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
-        val p1 = JSONObject().put("id", 1).put("name", "Me").put("status", "active").put("stack", 1000).put("bet", 0)
-        val p2 = JSONObject().put("id", 2).put("name", "P2").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
-        val players = JSONArray().put(p0).put(p1).put(p2)
-        
-        val baseState = JSONObject()
-            .put("tournament_id", "t1")
-            .put("game_id", "g1")
-            .put("round", 0)
-            .put("bet_index", 0)
-            .put("small_blind", 10)
-            .put("current_buy_in", 0)
-            .put("pot", 0)
-            .put("minimum_raise", 20)
-            .put("dealer", 0) // dealer = 0, in_action = 1 -> blinds position
-            .put("in_action", 1)
-            .put("players", players)
-            .put("community_cards", JSONArray())
-        
-        // Test with strong hand (pocket queens)
-        val strongState = JSONObject(baseState.toString())
-        strongState.getJSONArray("players").getJSONObject(1)
-            .put("hole_cards", JSONArray().put(card("Q", "spades")).put(card("Q", "hearts")))
-        
-        val strongBet = player.betRequest(strongState)
-        assertEquals(60, strongBet) // Should open-raise strong hand from blinds
-        
-        // Test with decent hand (AJ suited)
-        val decentState = JSONObject(baseState.toString())
-        decentState.getJSONArray("players").getJSONObject(1)
-            .put("hole_cards", JSONArray().put(card("A", "hearts")).put(card("J", "hearts")))
-        
-        val decentBet = player.betRequest(decentState)
-        assertEquals(0, decentBet) // Should check decent hand from blinds (defensive)
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
+            
+            // Create multi-player table with us in blinds position
+            val p0 = JSONObject().put("id", 0).put("name", "P0").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
+            val p1 = JSONObject().put("id", 1).put("name", "Me").put("status", "active").put("stack", 1000).put("bet", 0)
+            val p2 = JSONObject().put("id", 2).put("name", "P2").put("status", "active").put("stack", 1000).put("bet", 0).put("hole_cards", JSONArray())
+            val players = JSONArray().put(p0).put(p1).put(p2)
+            
+            val baseState = JSONObject()
+                .put("tournament_id", "t1")
+                .put("game_id", "g1")
+                .put("round", 0)
+                .put("bet_index", 0)
+                .put("small_blind", 10)
+                .put("current_buy_in", 0)
+                .put("pot", 0)
+                .put("minimum_raise", 20)
+                .put("dealer", 0) // dealer = 0, in_action = 1 -> blinds position
+                .put("in_action", 1)
+                .put("players", players)
+                .put("community_cards", JSONArray())
+            
+            // Test with strong hand (pocket queens)
+            val strongState = JSONObject(baseState.toString())
+            strongState.getJSONArray("players").getJSONObject(1)
+                .put("hole_cards", JSONArray().put(card("Q", "spades")).put(card("Q", "hearts")))
+            
+            val strongBet = player.betRequest(strongState)
+            assertEquals(60, strongBet) // Should open-raise strong hand from blinds
+            
+            // Test with decent hand (AJ suited)
+            val decentState = JSONObject(baseState.toString())
+            decentState.getJSONArray("players").getJSONObject(1)
+                .put("hole_cards", JSONArray().put(card("A", "hearts")).put(card("J", "hearts")))
+            
+            val decentBet = player.betRequest(decentState)
+            assertEquals(0, decentBet) // Should check decent hand from blinds (defensive)
+        }
     }
     
     @Test
@@ -273,14 +288,25 @@ class PlayerTest {
     
     @Test
     fun `version reflects strategy improvements`() {
+        // Test should be agnostic to strategy configuration
         val player = Player()
         val version = player.version()
-        assertEquals("Real Donkey Killer v2.0 - World Champion Enhanced (STANDARD)", version)
+        
+        // Version should contain the base name and a valid strategy mode
+        assertTrue(version.startsWith("Real Donkey Killer v2.0 - World Champion Enhanced"))
+        assertTrue(version.contains("(") && version.contains(")"))
+        
+        // Verify it contains a valid strategy mode
+        val modes = setOf("TIGHT", "STANDARD", "LAG")
+        assertTrue(modes.any { mode -> version.contains("($mode)") }, 
+                  "Version should contain a valid strategy mode, but was: $version")
     }
     
     @Test
     fun `integration test - complete betting round scenarios`() {
-        val player = Player()
+        // Use explicit STANDARD mode to ensure deterministic behavior
+        TestUtils.withStrategyMode(StrategyConfig.Mode.STANDARD) {
+            val player = Player()
         
         // Scenario 1: Strong hand in early position facing raise
         val scenario1 = baseState()
@@ -315,6 +341,7 @@ class PlayerTest {
         
         val bet3 = player.betRequest(scenario3)
         assertEquals(40, bet3) // Open-raise decent hand from late position
+        }
     }
     
     // Helper methods for complex state creation
