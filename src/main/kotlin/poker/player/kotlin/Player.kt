@@ -4,6 +4,37 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class Player {
+    private val seenCardsByGame = mutableMapOf<String, MutableSet<String>>()
+
+    enum class Position {
+        EARLY, MIDDLE, LATE, BLINDS
+    }
+
+    private fun normalizeCard(card: JSONObject): String {
+        val rank = card.getString("rank")
+        val suit = card.getString("suit")
+        return "$rank-$suit"
+    }
+
+    private fun addSeenCards(gameId: String, cards: JSONArray) {
+        val set = seenCardsByGame.getOrPut(gameId) { mutableSetOf() }
+        for (i in 0 until cards.length()) {
+            val c = cards.getJSONObject(i)
+            set.add(normalizeCard(c))
+        }
+    }
+
+    private fun getPosition(players: JSONArray, inAction: Int, dealer: Int): Position {
+        val total = players.length()
+        val relative = (inAction - dealer + total) % total
+        return when {
+            relative == 1 || relative == 2 -> Position.BLINDS
+            relative == 0 || relative >= total - 2 -> Position.LATE
+            relative >= total - 5 -> Position.MIDDLE
+            else -> Position.EARLY
+        }
+    }
+
     fun betRequest(game_state: JSONObject): Int {
         // Parse game state
         val players = game_state.getJSONArray("players")
@@ -16,11 +47,18 @@ class Player {
         val myCards = me.getJSONArray("hole_cards")
         
         // Get game information
+        val gameId = game_state.getString("game_id")
         val currentBuyIn = game_state.getInt("current_buy_in")
         val pot = game_state.getInt("pot")
         val smallBlind = game_state.getInt("small_blind")
         val minimumRaise = game_state.getInt("minimum_raise")
+        val dealer = game_state.getInt("dealer")
         
+        // Remember seen cards (hole + community) for this game
+        addSeenCards(gameId, myCards)
+        val community = game_state.optJSONArray("community_cards") ?: JSONArray()
+        if (community.length() > 0) addSeenCards(gameId, community)
+
         // Calculate call amount
         val callAmount = currentBuyIn - myBet
         
@@ -29,21 +67,40 @@ class Player {
             return myStack // All-in if we must
         }
         
-        // If no bet to call, open-raise with stronger ranges
+        // If no bet to call, open-raise based on position
         if (callAmount <= 0) {
-            return when {
-                hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6) // ~3x BB
-                hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4) // ~2x BB
-                else -> 0
+            val position = getPosition(players, inAction, dealer)
+            return when (position) {
+                Position.EARLY -> when {
+                    hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6)
+                    else -> 0
+                }
+                Position.MIDDLE -> when {
+                    hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6)
+                    hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4)
+                    else -> 0
+                }
+                Position.LATE, Position.BLINDS -> when {
+                    hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6)
+                    hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4)
+                    else -> 0
+                }
             }
         }
         
-        // Simple strategy: call small bets with decent hands, fold large bets
+        // Position-aware continuations when facing a bet
+        val position = getPosition(players, inAction, dealer)
+        val smallBetThreshold = when (position) {
+            Position.EARLY -> pot / 6
+            Position.MIDDLE -> pot / 5
+            Position.LATE, Position.BLINDS -> pot / 4
+        }
+
         return when {
-            hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise) // Proper min-raise with strong hands
-            hasDecentHand(myCards) && callAmount <= pot / 4 -> callAmount // Call with decent hands if bet is small
-            callAmount <= smallBlind -> callAmount // Call very small bets
-            else -> 0 // Fold otherwise
+            hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise)
+            hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
+            callAmount <= smallBlind -> callAmount
+            else -> 0
         }
     }
     
@@ -105,7 +162,20 @@ class Player {
         }
     }
 
-    fun showdown() {
+    fun showdown(game_state: JSONObject) {
+        // Capture revealed cards and clear memory for this game
+        val gameId = game_state.optString("game_id", "")
+        val players = game_state.optJSONArray("players")
+        if (players != null) {
+            for (i in 0 until players.length()) {
+                val p = players.getJSONObject(i)
+                val hc = p.optJSONArray("hole_cards")
+                if (hc != null) addSeenCards(gameId, hc)
+            }
+        }
+        if (gameId.isNotEmpty()) {
+            seenCardsByGame.remove(gameId)
+        }
     }
 
     fun version(): String {
