@@ -172,7 +172,7 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v2.1 - Dynamic World Champion ($mode)"
+        return "Real Donkey Killer v3.0 - Dynamic World Champion ($mode)"
     }
     
     /**

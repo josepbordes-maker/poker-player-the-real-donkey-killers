@@ -3,7 +3,7 @@
   "riskFreq": null,
   "smallBetMult": null,
   "bluffRaise": null,
-  "rainMan": null,
+  "rainMan": true,
   "postflopSmall": null,
   "postflopMed": null,
   "postflopBig": null
