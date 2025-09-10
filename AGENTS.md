@@ -48,6 +48,18 @@ Requirements: Java 21 toolchain (Gradle config manages this). For tests, ensure 
   - Blinds open only strong hands; otherwise check.
 - Run locally via `./gradlew test`; target fast, deterministic tests.
 
+## Runtime Strategy Flags
+- `STRAT_MODE` = `TIGHT` | `STANDARD` (default) | `LAG` (aliases: `LOOSE`, `AGGRO`)
+  - TIGHT lowers risk and calling thresholds; LAG increases both and opens more in late.
+- `STRAT_RISK_FREQ` = `0.0–0.5` overrides risk mood probability (default by mode: TIGHT 0.05, STANDARD 0.10, LAG 0.25).
+- `STRAT_SMALLBET_MULT` = `0.5–2.0` scales position small-bet call thresholds.
+- `STRAT_BLUFF_RAISE` = `off|on` disables/enables bluff-raises in risk mood (default on).
+
+Examples:
+- `STRAT_MODE=TIGHT ./gradlew run`
+- `STRAT_MODE=LAG STRAT_BLUFF_RAISE=off ./gradlew run`
+- `./gradlew test -DSTRAT_MODE=TIGHT -DSTRAT_RISK_FREQ=0.05`
+
 ## Commit & Pull Request Guidelines
 - Commits: imperative, concise subject (e.g., "Add betting strategy and tests").
 - PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `Player.version()` when changing strategy.

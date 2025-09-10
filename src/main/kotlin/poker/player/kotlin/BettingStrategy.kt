@@ -35,17 +35,20 @@ class BettingStrategy(
         }
         
         // Position-aware continuations when facing a bet
-        val smallBetThreshold = positionAnalyzer.getSmallBetThreshold(position, pot)
+        var smallBetThreshold = positionAnalyzer.getSmallBetThreshold(position, pot)
+        // Adjust threshold by strategy mode (tight/lag)
+        smallBetThreshold = Math.max(1, (smallBetThreshold * StrategyConfig.smallBetThresholdMultiplier).toInt())
 
         // Random risk-taking: 15% chance to take a risk with marginal hands
-        val isRiskMood = random.nextFloat() < 0.15f
+        val isRiskMood = random.nextFloat() < StrategyConfig.riskMoodProbability
         
         return when {
             handEvaluator.hasStrongHand(myCards) -> min(myStack, callAmount + minimumRaise * 2)
             handEvaluator.hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
             handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
             // Remove unconditional small-bet calls; require at least a playable hand
-            isRiskMood && handEvaluator.hasMarginalHand(myCards) && callAmount <= pot / 3 -> {
+            // Risky play only for marginal non-playable hands
+            isRiskMood && handEvaluator.hasMarginalHand(myCards) && !handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= pot / 3 -> {
                 calculateRiskyPlay(callAmount, minimumRaise, myStack)
             }
             else -> 0
@@ -68,10 +71,15 @@ class BettingStrategy(
                 handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
                 else -> 0
             }
-            PositionAnalyzer.Position.LATE -> when {
-                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
-                handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
-                else -> 0
+            PositionAnalyzer.Position.LATE -> {
+                when {
+                    handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                    handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                    // In LAG mode, allow opening weak-but-playable hands from late position
+                    StrategyConfig.allowLateOpenWithWeakPlayable && handEvaluator.hasWeakButPlayableHand(myCards) ->
+                        min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                    else -> 0
+                }
             }
             PositionAnalyzer.Position.BLINDS -> when {
                 // More defensive from blinds: raise only strong hands
@@ -83,6 +91,7 @@ class BettingStrategy(
     
     private fun calculateRiskyPlay(callAmount: Int, minimumRaise: Int, myStack: Int): Int {
         // Random aggressive play - sometimes raise with marginal hands
+        if (!StrategyConfig.bluffRaiseEnabled) return callAmount
         return if (random.nextFloat() < 0.3f && callAmount + minimumRaise <= myStack / 4) {
             callAmount + minimumRaise // Bluff raise
         } else {
