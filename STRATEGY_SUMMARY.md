@@ -64,7 +64,7 @@ Position calculation accounts for dealer position and uses relative positioning 
 - All-in protection: never bet more than current stack
 
 ### 4. Randomized Risk-Taking
-- **15% chance** to enter "risk mood" each hand
+- **10% chance** (default) to enter "risk mood" each hand
 - In risk mood with marginal hands and reasonable pot odds (bet ≤ pot/3):
   - **30% chance** to bluff-raise (call + minimum raise)
   - **70% chance** to call
@@ -125,5 +125,9 @@ The strategy aims to:
 
 ---
 
-*Strategy Version: Real Donkey Killer v1.0*  
+---
+
+Defaults can be tuned at runtime using `STRAT_MODE` (TIGHT | STANDARD | LAG) and optional overrides (see AGENTS.md). The above reflects STANDARD defaults.
+
+*Strategy Version: Real Donkey Killer v1.2*  
 *Last Updated: Current Implementation Analysis*

@@ -53,6 +53,6 @@ class Player {
     }
 
     fun version(): String {
-        return "Real Donkey Killer v1.1"
+        return "Real Donkey Killer v1.2"
     }
 }

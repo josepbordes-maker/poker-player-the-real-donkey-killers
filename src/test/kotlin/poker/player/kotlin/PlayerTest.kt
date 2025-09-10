@@ -275,7 +275,7 @@ class PlayerTest {
     fun `version reflects strategy improvements`() {
         val player = Player()
         val version = player.version()
-        assertEquals("Real Donkey Killer v1.1", version)
+        assertEquals("Real Donkey Killer v1.2", version)
     }
     
     @Test
@@ -376,4 +376,3 @@ class PlayerTest {
             .put("community_cards", JSONArray())
     }
 }
-
