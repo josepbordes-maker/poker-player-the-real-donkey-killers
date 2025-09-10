@@ -82,9 +82,14 @@ class Player {
                     hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4)
                     else -> 0
                 }
-                Position.LATE, Position.BLINDS -> when {
+                Position.LATE -> when {
                     hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6)
                     hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4)
+                    else -> 0
+                }
+                Position.BLINDS -> when {
+                    // More defensive from blinds: raise only strong hands
+                    hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6)
                     else -> 0
                 }
             }
@@ -93,9 +98,10 @@ class Player {
         // Position-aware continuations when facing a bet
         val position = getPosition(players, inAction, dealer)
         val smallBetThreshold = when (position) {
-            Position.EARLY -> pot / 4  // More lenient than pot/6
-            Position.MIDDLE -> pot / 3 // More lenient than pot/5
-            Position.LATE, Position.BLINDS -> pot / 2 // More lenient than pot/4
+            Position.EARLY -> pot / 4
+            Position.MIDDLE -> pot / 3
+            Position.LATE -> pot / 2
+            Position.BLINDS -> pot / 3 // Slightly tighter than late position
         }
 
         // Random risk-taking: 15% chance to take a risk with marginal hands
