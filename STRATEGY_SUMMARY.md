@@ -123,6 +123,27 @@ Three runtime-selectable modes adjust risk and looseness without code changes:
 
 How to select: set `STRAT_MODE=TIGHT|STANDARD|LAG` or edit `src/main/resources/strategy.json` (see AGENTS.md for overrides).
 
+### Quick Reference (defaults)
+
+- TIGHT
+  - Risk mood probability: 5%
+  - Small-bet call threshold multiplier: 0.8×
+  - Late opens: only strong/decent hands
+
+- STANDARD
+  - Risk mood probability: 10%
+  - Small-bet call threshold multiplier: 1.0×
+  - Late opens: only strong/decent hands
+
+- LAG
+  - Risk mood probability: 25%
+  - Small-bet call threshold multiplier: 1.2×
+  - Late opens: allow weak‑but‑playable hands
+
+Notes
+- You can override risk and thresholds for any mode using `STRAT_RISK_FREQ` and `STRAT_SMALLBET_MULT`.
+- You can disable bluff-raises (in risk mood) with `STRAT_BLUFF_RAISE=off`.
+
 ## Current Limitations & Future Enhancements
 
 ### Limitations
