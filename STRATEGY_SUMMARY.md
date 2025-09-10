@@ -1,37 +1,57 @@
-# The Real Donkey Killers - World Championship Poker Strategy
+# The Real Donkey Killers - Dynamic World Championship Poker Strategy
 
 ## Overview
-Our poker bot "Real Donkey Killer v2.0" implements a world championship-level strategy featuring advanced opponent modeling, exploitative play, and sophisticated post-flop decision making. This represents a quantum leap from basic tight-aggressive play to professional-level adaptive poker strategy.
+Our poker bot "Real Donkey Killer v3.0" implements a revolutionary dynamic strategy system that adapts in real-time to maximize win rate and minimize losses. This version represents a breakthrough in AI poker strategy, featuring adaptive decision-making, advanced opponent profiling, and sophisticated meta-game awareness.
 
-## World Championship Features
+## Revolutionary Dynamic Features
 
-### 1. Advanced Opponent Modeling
-Revolutionary adaptive system that learns and exploits opponent tendencies:
-- **Player Classification**: Automatically identifies Tight-Aggressive, Loose-Passive, Loose-Aggressive, and Tight-Passive players
-- **Behavioral Tracking**: Monitors VPIP, aggression frequency, bet sizing patterns, and positional tendencies
-- **Tilt Detection**: Recognizes when opponents are playing differently from their baseline (on tilt)
-- **Exploitative Adjustments**: Dynamically adjusts strategy - bluff more against tight players, value bet larger against calling stations
+### 1. Real-Time Strategy Adaptation
+Breakthrough adaptive system that changes strategy based on game flow:
+- **Performance Tracking**: Monitors win/loss patterns and adjusts aggression accordingly
+- **Meta-Game Awareness**: Adapts to table image and opponent adjustments
+- **Tournament Phase Recognition**: Optimizes for early accumulation, bubble survival, and final table play
+- **Stack-Size Optimization**: Automatically switches between deep-stack, medium-stack, and push-fold strategies
 
-### 2. Sophisticated Post-Flop Strategy
-Professional-level post-flop play with board texture analysis:
-- **Board Texture Recognition**: Analyzes wetness, connectivity, flush/straight possibilities
-- **Continuation Betting**: Strategic c-betting based on hand strength, board texture, and opponent count
-- **Hand Strength Evaluation**: Accurate assessment combining made hands and drawing potential
-- **Semi-Bluff Optimization**: Perfect timing for semi-bluffs with strong draws
-- **Protection Betting**: Aggressive betting to deny equity to drawing hands
+### 2. Advanced Opponent Profiling
+Ultra-sophisticated opponent modeling with deep learning capabilities:
+- **Playing Style Classification**: Identifies 7 distinct player types with confidence levels
+- **Behavioral Pattern Recognition**: Tracks VPIP, PFR, aggression, bet sizing patterns, and positional tendencies
+- **Tilt Detection and Exploitation**: Recognizes emotional state changes and exploits them
+- **Action Prediction**: Predicts opponent actions with statistical confidence levels
+- **Exploitability Scoring**: Rates how exploitable each opponent is and prioritizes targets
 
-### 3. Stack-Size Adaptive Strategy
-Professional stack management across all stack depths:
-- **Short Stack (< 15 BB)**: Push/fold strategy with optimal hand ranges
-- **Medium Stack (15-50 BB)**: Balanced approach with stack preservation
-- **Deep Stack (> 50 BB)**: Complex post-flop play and implied odds consideration
+### 3. Dynamic Strategic Modes
+Six distinct strategic modes automatically selected based on game conditions:
 
-### 4. Enhanced Position System
-Refined positional strategy beyond basic classifications:
-- **EARLY**: Ultra-tight premium hands only, maximum protection
-- **MIDDLE**: Balanced approach with opponent-specific adjustments
-- **LATE**: Aggressive stealing with exploitative adjustments
-- **BLINDS**: Defensive strategy with squeeze play potential
+#### Ultra-Tight Mode (Survival Situations)
+- **When Active**: Bubble play, short stacks, high-pressure spots
+- **Strategy**: Only premium hands, maximum survival probability
+- **Key Features**: Fold equity optimization, ICM awareness
+
+#### Exploitative Aggressive Mode (Weak Opponents)
+- **When Active**: Loose/tilted opponents detected, calling stations present
+- **Strategy**: Maximize value against exploitable players
+- **Key Features**: Wider value betting, increased isolation, targeted exploitation
+
+#### Push-Fold Mode (Short Stacks)
+- **When Active**: < 10 big blinds, tournament end-game
+- **Strategy**: Nash equilibrium based shoving ranges
+- **Key Features**: Mathematical precision, position-adjusted ranges
+
+#### ICM-Aware Mode (Tournament Pressure)
+- **When Active**: Final table, significant pay jumps
+- **Strategy**: Risk-adjusted decisions based on tournament equity
+- **Key Features**: Bubble factor calculations, survival prioritization
+
+#### Meta-Adaptive Mode (Experienced Tables)
+- **When Active**: Long sessions, opponent adjustments detected
+- **Strategy**: Counter-exploitative play, image management
+- **Key Features**: Table image utilization, leveling opponents
+
+#### Balanced GTO Mode (Default)
+- **When Active**: Unknown opponents, balanced games
+- **Strategy**: Game theory optimal baseline
+- **Key Features**: Unexploitable foundation, mathematical balance
 
 ### 2. Hand Strength Classification
 
