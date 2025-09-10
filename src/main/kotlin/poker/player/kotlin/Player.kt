@@ -19,6 +19,7 @@ class Player {
         val currentBuyIn = game_state.getInt("current_buy_in")
         val pot = game_state.getInt("pot")
         val smallBlind = game_state.getInt("small_blind")
+        val minimumRaise = game_state.getInt("minimum_raise")
         
         // Calculate call amount
         val callAmount = currentBuyIn - myBet
@@ -28,14 +29,18 @@ class Player {
             return myStack // All-in if we must
         }
         
-        // If no bet to call, make a small bet with decent hands
+        // If no bet to call, open-raise with stronger ranges
         if (callAmount <= 0) {
-            return if (hasDecentHand(myCards)) smallBlind else 0
+            return when {
+                hasStrongHand(myCards) -> Math.min(myStack, smallBlind * 6) // ~3x BB
+                hasDecentHand(myCards) -> Math.min(myStack, smallBlind * 4) // ~2x BB
+                else -> 0
+            }
         }
         
         // Simple strategy: call small bets with decent hands, fold large bets
         return when {
-            hasStrongHand(myCards) -> callAmount + smallBlind // Raise with strong hands
+            hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise) // Proper min-raise with strong hands
             hasDecentHand(myCards) && callAmount <= pot / 4 -> callAmount // Call with decent hands if bet is small
             callAmount <= smallBlind -> callAmount // Call very small bets
             else -> 0 // Fold otherwise
