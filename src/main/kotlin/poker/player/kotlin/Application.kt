@@ -31,8 +31,14 @@ fun main() {
                     }
 
                     "showdown" -> {
-                        player.showdown()
-                        "OK"
+                        val gameState = formParameters["game_state"]
+                        if (gameState == null) {
+                            "Missing game_state!"
+                        } else {
+                            val json = JSONObject(gameState)
+                            player.showdown(json)
+                            "OK"
+                        }
                     }
 
                     "version" -> player.version()
