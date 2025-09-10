@@ -105,6 +105,10 @@ Notes
 Strategy tracking:
 - Update `STRATEGY_SUMMARY.md` and bump `Player.version()` when changing strategic behavior.
 
+Speed of iteration:
+- Prefer quick, small commits for each focused change. Land incremental improvements fast and iterate.
+- When feasible, run `./gradlew test` before each commit; keep commits atomic so rollbacks are easy.
+
 ## Security & Configuration Tips
 - Never log sensitive hole cards in production logs.
 - Server binds to `$PORT` (Heroku). Validate that the built JAR name in `Procfile` matches the actual artifact under `build/libs/`.
