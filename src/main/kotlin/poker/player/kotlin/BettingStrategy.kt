@@ -41,10 +41,10 @@ class BettingStrategy(
         val isRiskMood = random.nextFloat() < 0.15f
         
         return when {
-            handEvaluator.hasStrongHand(myCards) -> min(myStack, callAmount + minimumRaise)
+            handEvaluator.hasStrongHand(myCards) -> min(myStack, callAmount + minimumRaise * 2)
             handEvaluator.hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
             handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
-            callAmount <= smallBlind * 2 -> callAmount // More willing to call small bets
+            // Remove unconditional small-bet calls; require at least a playable hand
             isRiskMood && handEvaluator.hasMarginalHand(myCards) && callAmount <= pot / 3 -> {
                 calculateRiskyPlay(callAmount, minimumRaise, myStack)
             }
@@ -68,9 +68,14 @@ class BettingStrategy(
                 handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
                 else -> 0
             }
-            PositionAnalyzer.Position.LATE, PositionAnalyzer.Position.BLINDS -> when {
+            PositionAnalyzer.Position.LATE -> when {
                 handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
                 handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                else -> 0
+            }
+            PositionAnalyzer.Position.BLINDS -> when {
+                // More defensive from blinds: raise only strong hands
+                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
                 else -> 0
             }
         }
