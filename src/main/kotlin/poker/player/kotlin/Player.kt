@@ -105,7 +105,7 @@ class Player {
             hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise)
             hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
             hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
-            callAmount <= smallBlind * 2 -> callAmount // More willing to call small bets
+            // Remove unconditional small-bet calls; require at least a playable hand
             isRiskMood && hasMarginalHand(myCards) && callAmount <= pot / 3 -> {
                 // Random aggressive play - sometimes raise with marginal hands
                 if (random.nextFloat() < 0.3f && callAmount + minimumRaise <= myStack / 4) {
