@@ -112,7 +112,12 @@ class HandEvaluator(
      * Use Rain Man API to evaluate hand if possible
      */
     private fun evaluateWithRainMan(allCards: List<JSONObject>): HandStrength? {
-        if (allCards.size < 5) return null
+        if (allCards.size < 5) {
+            println("      evaluateWithRainMan() - Not enough cards: ${allCards.size}")
+            return null
+        }
+        
+        println("      evaluateWithRainMan() - Evaluating ${allCards.size} cards with Rain Man API")
         
         // Convert to JSONArray for Rain Man API
         val cardsArray = JSONArray()
@@ -120,8 +125,16 @@ class HandEvaluator(
         
         val rainManResult = rainManService.rankHand(cardsArray)
         
-        return rainManResult?.let { result ->
+        if (rainManResult == null) {
+            println("      evaluateWithRainMan() - Rain Man API returned null")
+            return null
+        }
+        
+        println("      Rain Man result: rank=${rainManResult.rank}, value=${rainManResult.value}, secondValue=${rainManResult.secondValue}")
+        
+        return rainManResult.let { result ->
             var handRank = fromRainManRank(result.rank)
+            println("      Converted Rain Man rank ${result.rank} to ${handRank.name}")
             
             // Post-process: Rain Man doesn't distinguish royal flush from straight flush
             // If we get a straight flush, check if it's actually a royal flush
@@ -130,11 +143,13 @@ class HandEvaluator(
                 val ranks = allCards.map { CardUtils.getRankValue(it.getString("rank")) }
                 if (ranks.contains(14) && ranks.contains(13) && ranks.contains(12) && 
                     ranks.contains(11) && ranks.contains(10)) {
+                    println("      Detected ROYAL FLUSH (A-high straight flush)")
                     handRank = HandRank.ROYAL_FLUSH
                 }
             }
             
             val description = getHandDescription(handRank, result.value, result.secondValue)
+            println("      Final evaluation: ${handRank.name} - $description")
             
             HandStrength(
                 rank = handRank,
@@ -238,7 +253,10 @@ class HandEvaluator(
     }
 
     fun hasStrongHand(cards: JSONArray): Boolean {
-        if (cards.length() != 2) return false
+        if (cards.length() != 2) {
+            println("      hasStrongHand() - Invalid card count: ${cards.length()}")
+            return false
+        }
         
         val card1 = cards.getJSONObject(0)
         val card2 = cards.getJSONObject(1)
@@ -246,16 +264,32 @@ class HandEvaluator(
         val rank2 = card2.getString("rank")
         
         // Strong hands: pairs of 10 or higher, AK, AQ
-        return when {
-            rank1 == rank2 && CardUtils.getRankValue(rank1) >= 10 -> true // High pairs
-            (rank1 == "A" && rank2 == "K") || (rank1 == "K" && rank2 == "A") -> true // AK
-            (rank1 == "A" && rank2 == "Q") || (rank1 == "Q" && rank2 == "A") -> true // AQ
-            else -> false
+        val result = when {
+            rank1 == rank2 && CardUtils.getRankValue(rank1) >= 10 -> {
+                println("      hasStrongHand() - HIGH PAIR: $rank1$rank2 -> TRUE")
+                true // High pairs
+            }
+            (rank1 == "A" && rank2 == "K") || (rank1 == "K" && rank2 == "A") -> {
+                println("      hasStrongHand() - ACE KING: $rank1$rank2 -> TRUE")
+                true // AK
+            }
+            (rank1 == "A" && rank2 == "Q") || (rank1 == "Q" && rank2 == "A") -> {
+                println("      hasStrongHand() - ACE QUEEN: $rank1$rank2 -> TRUE")
+                true // AQ
+            }
+            else -> {
+                println("      hasStrongHand() - NOT STRONG: $rank1$rank2 -> FALSE")
+                false
+            }
         }
+        return result
     }
     
     fun hasDecentHand(cards: JSONArray): Boolean {
-        if (cards.length() != 2) return false
+        if (cards.length() != 2) {
+            println("      hasDecentHand() - Invalid card count: ${cards.length()}")
+            return false
+        }
         
         val card1 = cards.getJSONObject(0)
         val card2 = cards.getJSONObject(1)
@@ -263,17 +297,40 @@ class HandEvaluator(
         val rank2 = card2.getString("rank")
         val suit1 = card1.getString("suit")
         val suit2 = card2.getString("suit")
+        val isSuited = suit1 == suit2
         
         // Expanded decent hands: any pair, high cards, suited connectors, broadway cards
-        return when {
-            rank1 == rank2 -> true // Any pair
-            CardUtils.getRankValue(rank1) >= 9 || CardUtils.getRankValue(rank2) >= 9 -> true // 9+ cards (was 10+)
-            suit1 == suit2 && abs(CardUtils.getRankValue(rank1) - CardUtils.getRankValue(rank2)) <= 2 -> true // Suited connectors/gappers
-            (rank1 == "A" || rank2 == "A") -> true // Any ace
-            (rank1 == "K" || rank2 == "K") -> true // Any king
-            CardUtils.isBroadway(rank1) && CardUtils.isBroadway(rank2) -> true // Two broadway cards (10, J, Q, K, A)
-            else -> false
+        val result = when {
+            rank1 == rank2 -> {
+                println("      hasDecentHand() - ANY PAIR: $rank1$rank2 -> TRUE")
+                true // Any pair
+            }
+            CardUtils.getRankValue(rank1) >= 9 || CardUtils.getRankValue(rank2) >= 9 -> {
+                println("      hasDecentHand() - HIGH CARD (9+): $rank1$rank2 -> TRUE")
+                true // 9+ cards (was 10+)
+            }
+            isSuited && abs(CardUtils.getRankValue(rank1) - CardUtils.getRankValue(rank2)) <= 2 -> {
+                println("      hasDecentHand() - SUITED CONNECTOR/GAPPER: $rank1$rank2 suited -> TRUE")
+                true // Suited connectors/gappers
+            }
+            (rank1 == "A" || rank2 == "A") -> {
+                println("      hasDecentHand() - ANY ACE: $rank1$rank2 -> TRUE")
+                true // Any ace
+            }
+            (rank1 == "K" || rank2 == "K") -> {
+                println("      hasDecentHand() - ANY KING: $rank1$rank2 -> TRUE")
+                true // Any king
+            }
+            CardUtils.isBroadway(rank1) && CardUtils.isBroadway(rank2) -> {
+                println("      hasDecentHand() - TWO BROADWAY: $rank1$rank2 -> TRUE")
+                true // Two broadway cards (10, J, Q, K, A)
+            }
+            else -> {
+                println("      hasDecentHand() - NOT DECENT: $rank1$rank2 -> FALSE")
+                false
+            }
         }
+        return result
     }
     
     fun hasWeakButPlayableHand(cards: JSONArray): Boolean {
@@ -319,22 +376,40 @@ class HandEvaluator(
      * Enhanced version that takes community cards for more accurate evaluation
      */
     fun hasStrongHandWithCommunity(holeCards: JSONArray, communityCards: JSONArray): Boolean {
-        if (holeCards.length() != 2) return false
+        if (holeCards.length() != 2) {
+            println("      hasStrongHandWithCommunity() - Invalid hole cards: ${holeCards.length()}")
+            return false
+        }
         
         // If we have community cards, use full hand evaluation
         if (communityCards.length() >= 3) {
+            println("      hasStrongHandWithCommunity() - Using full hand evaluation with ${communityCards.length()} community cards")
             val handStrength = evaluateBestHand(holeCards, communityCards)
+            println("      Hand strength: ${handStrength.rank.name} (value: ${handStrength.value})")
+            
             // Strong hands are pairs or better with Rain Man analysis
-            return when (handStrength.rank) {
-                HandRank.ONE_PAIR -> handStrength.value >= 10 // Pair of tens or better
+            val result = when (handStrength.rank) {
+                HandRank.ONE_PAIR -> {
+                    val isStrong = handStrength.value >= 10 // Pair of tens or better
+                    println("      ONE_PAIR (${handStrength.value}) -> Strong: $isStrong")
+                    isStrong
+                }
                 HandRank.TWO_PAIR, HandRank.THREE_OF_A_KIND, HandRank.STRAIGHT,
                 HandRank.FLUSH, HandRank.FULL_HOUSE, HandRank.FOUR_OF_A_KIND,
-                HandRank.STRAIGHT_FLUSH, HandRank.ROYAL_FLUSH -> true
-                else -> false
+                HandRank.STRAIGHT_FLUSH, HandRank.ROYAL_FLUSH -> {
+                    println("      ${handStrength.rank.name} -> Strong: TRUE")
+                    true
+                }
+                else -> {
+                    println("      ${handStrength.rank.name} -> Strong: FALSE")
+                    false
+                }
             }
+            return result
         }
         
         // Fall back to pre-flop evaluation
+        println("      hasStrongHandWithCommunity() - Falling back to pre-flop evaluation")
         return hasStrongHand(holeCards)
     }
     

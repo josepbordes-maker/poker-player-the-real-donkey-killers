@@ -9,15 +9,28 @@ class GameStateManager {
 
     fun addSeenCards(gameId: String, cards: JSONArray) {
         val set = seenCardsByGame.getOrPut(gameId) { mutableSetOf() }
+        val newCards = mutableListOf<String>()
+        
         for (i in 0 until cards.length()) {
             val c = cards.getJSONObject(i)
-            set.add(CardUtils.normalizeCard(c))
+            val normalizedCard = CardUtils.normalizeCard(c)
+            if (set.add(normalizedCard)) {  // add() returns true if the element was added (wasn't already present)
+                newCards.add(normalizedCard)
+            }
+        }
+        
+        if (newCards.isNotEmpty()) {
+            println("      GameStateManager.addSeenCards() - Game $gameId: Added ${newCards.size} new cards: ${newCards.joinToString(", ")}")
+            println("      Total seen cards for game $gameId: ${set.size}")
         }
     }
     
     fun clearGameMemory(gameId: String) {
         if (gameId.isNotEmpty()) {
-            seenCardsByGame.remove(gameId)
+            val removed = seenCardsByGame.remove(gameId)
+            if (removed != null) {
+                println("      GameStateManager.clearGameMemory() - Cleared ${removed.size} seen cards for game $gameId")
+            }
         }
     }
     
@@ -26,23 +39,35 @@ class GameStateManager {
     }
     
     fun processShowdown(game_state: JSONObject) {
+        println("      GameStateManager.processShowdown() - Processing showdown analysis")
+        
         // Capture revealed cards and analyze final hand strength
         val gameId = game_state.optString("game_id", "")
         val players = game_state.optJSONArray("players")
         val communityCards = game_state.optJSONArray("community_cards") ?: JSONArray()
         
+        println("      Game ID: $gameId")
+        println("      Players: ${players?.length() ?: 0}")
+        println("      Community cards: ${communityCards.length()}")
+        
         if (players != null) {
             analyzeShowdownHands(players, communityCards, gameId)
             
             // Add all revealed cards to seen cards
+            var totalRevealedCards = 0
             for (i in 0 until players.length()) {
                 val p = players.getJSONObject(i)
                 val hc = p.optJSONArray("hole_cards")
-                if (hc != null) addSeenCards(gameId, hc)
+                if (hc != null) {
+                    addSeenCards(gameId, hc)
+                    totalRevealedCards += hc.length()
+                }
             }
+            println("      Total revealed hole cards: $totalRevealedCards")
         }
         
         clearGameMemory(gameId)
+        println("      GameStateManager.processShowdown() - Complete")
     }
     
     private fun analyzeShowdownHands(players: JSONArray, communityCards: JSONArray, gameId: String) {

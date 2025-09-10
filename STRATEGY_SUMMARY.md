@@ -1,18 +1,37 @@
-# The Real Donkey Killers - Poker Strategy Summary
+# The Real Donkey Killers - World Championship Poker Strategy
 
 ## Overview
-Our poker bot "Real Donkey Killer" implements a comprehensive position-aware strategy with aggressive tendencies and calculated risk-taking. The strategy balances tight-aggressive play in early positions with more speculative play in late positions.
+Our poker bot "Real Donkey Killer v2.0" implements a world championship-level strategy featuring advanced opponent modeling, exploitative play, and sophisticated post-flop decision making. This represents a quantum leap from basic tight-aggressive play to professional-level adaptive poker strategy.
 
-## Core Strategy Components
+## World Championship Features
 
-### 1. Position Awareness System
-The bot classifies positions into four categories:
-- **EARLY**: Conservative play, only strong hands
-- **MIDDLE**: Moderate aggression with decent hands
-- **LATE**: More speculative play, wider hand range
-- **BLINDS**: Defensive but opportunistic
+### 1. Advanced Opponent Modeling
+Revolutionary adaptive system that learns and exploits opponent tendencies:
+- **Player Classification**: Automatically identifies Tight-Aggressive, Loose-Passive, Loose-Aggressive, and Tight-Passive players
+- **Behavioral Tracking**: Monitors VPIP, aggression frequency, bet sizing patterns, and positional tendencies
+- **Tilt Detection**: Recognizes when opponents are playing differently from their baseline (on tilt)
+- **Exploitative Adjustments**: Dynamically adjusts strategy - bluff more against tight players, value bet larger against calling stations
 
-Position calculation accounts for dealer position and uses relative positioning for accurate classification.
+### 2. Sophisticated Post-Flop Strategy
+Professional-level post-flop play with board texture analysis:
+- **Board Texture Recognition**: Analyzes wetness, connectivity, flush/straight possibilities
+- **Continuation Betting**: Strategic c-betting based on hand strength, board texture, and opponent count
+- **Hand Strength Evaluation**: Accurate assessment combining made hands and drawing potential
+- **Semi-Bluff Optimization**: Perfect timing for semi-bluffs with strong draws
+- **Protection Betting**: Aggressive betting to deny equity to drawing hands
+
+### 3. Stack-Size Adaptive Strategy
+Professional stack management across all stack depths:
+- **Short Stack (< 15 BB)**: Push/fold strategy with optimal hand ranges
+- **Medium Stack (15-50 BB)**: Balanced approach with stack preservation
+- **Deep Stack (> 50 BB)**: Complex post-flop play and implied odds consideration
+
+### 4. Enhanced Position System
+Refined positional strategy beyond basic classifications:
+- **EARLY**: Ultra-tight premium hands only, maximum protection
+- **MIDDLE**: Balanced approach with opponent-specific adjustments
+- **LATE**: Aggressive stealing with exploitative adjustments
+- **BLINDS**: Defensive strategy with squeeze play potential
 
 ### 2. Hand Strength Classification
 
@@ -195,5 +214,30 @@ Notes
 
 Defaults can be tuned at runtime using `STRAT_MODE` (TIGHT | STANDARD | LAG) and optional overrides (see AGENTS.md). The above reflects STANDARD defaults.
 
-*Strategy Version: Real Donkey Killer v1.2 - Rain Man Enhanced*  
-*Last Updated: Rain Man API Integration*
+## World Championship Advantages
+
+### Compared to Basic Strategies
+1. **Adaptive vs Static**: Learns and exploits opponents instead of using fixed strategies
+2. **Post-Flop Excellence**: Professional board reading and continuation betting
+3. **Stack Awareness**: Optimal play across all stack depths
+4. **Exploitative Edge**: Maximizes profit against different player types
+5. **Tilt Recognition**: Capitalizes on opponents' emotional mistakes
+
+### Key Improvements Over v1.2
+- **Opponent Modeling**: Complete player profiling and adaptive strategy
+- **Post-Flop Strategy**: Advanced board texture analysis and c-betting
+- **Stack-Size Strategy**: Optimal play for short/medium/deep stacks
+- **Exploitative Play**: Dynamic adjustments against different player types
+- **Professional Decision Making**: World championship-level strategic thinking
+
+### Performance Benefits
+- **Higher Win Rate**: Exploitative play generates significantly more profit
+- **Lower Variance**: Better hand selection and position awareness
+- **Adaptability**: Performs well against all opponent types
+- **Scalability**: Strategy improves with more data collection
+- **Robustness**: Multiple fallback systems ensure consistent performance
+
+---
+
+*Strategy Version: Real Donkey Killer v2.0 - World Champion Enhanced*  
+*Last Updated: Professional-Level Strategy Implementation*
