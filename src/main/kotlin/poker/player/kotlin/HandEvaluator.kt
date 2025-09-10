@@ -343,12 +343,23 @@ class HandEvaluator(
         val suit1 = card1.getString("suit")
         val suit2 = card2.getString("suit")
         
-        // Weak but playable: suited cards, connected cards, any face card
+        val value1 = CardUtils.getRankValue(rank1)
+        val value2 = CardUtils.getRankValue(rank2)
+        val gap = abs(value1 - value2)
+        val isSuited = suit1 == suit2
+        
+        // Tightened weak but playable definition
         return when {
-            suit1 == suit2 -> true // Any suited cards
-            abs(CardUtils.getRankValue(rank1) - CardUtils.getRankValue(rank2)) <= 1 -> true // Connected cards
-            CardUtils.getRankValue(rank1) >= 11 || CardUtils.getRankValue(rank2) >= 11 -> true // Any jack or higher
-            (CardUtils.getRankValue(rank1) >= 8 && CardUtils.getRankValue(rank2) >= 8) -> true // Both cards 8 or higher
+            // Suited cards with reasonable values (7+ or connected)
+            isSuited && (minOf(value1, value2) >= 7 || gap <= 1) -> true
+            // Connected cards (no gap) with decent values  
+            gap == 0 && minOf(value1, value2) >= 6 -> true
+            // One-gap connectors that are suited and reasonably high
+            gap == 1 && isSuited && minOf(value1, value2) >= 8 -> true
+            // Any jack or higher (but not trash like J2)
+            (value1 >= 11 && value2 >= 7) || (value2 >= 11 && value1 >= 7) -> true
+            // Both cards 9 or higher 
+            value1 >= 9 && value2 >= 9 -> true
             else -> false
         }
     }

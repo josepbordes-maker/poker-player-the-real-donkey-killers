@@ -37,24 +37,41 @@ class BettingStrategy(
         
         // If no bet to call
         if (callAmount <= 0) {
-            // Post-flop continuation/value bet sizing using hand rank
+            // Post-flop continuation/value bet sizing using hand rank and position
             if (communityCards.length() >= 3) {
                 val strength = handEvaluator.evaluateBestHand(myCards, communityCards)
                 val basePot = if (pot > 0) pot else smallBlind * 4 // minimal pot fallback
+                
+                // Position-based c-betting strategy
+                val positionMultiplier = when (position) {
+                    PositionAnalyzer.Position.EARLY -> 0.8  // More conservative
+                    PositionAnalyzer.Position.MIDDLE -> 0.9
+                    PositionAnalyzer.Position.LATE -> 1.1   // More aggressive
+                    PositionAnalyzer.Position.BLINDS -> 0.85
+                }
+                
                 val betSize = when (strength.rank) {
                     HandEvaluator.HandRank.ROYAL_FLUSH,
                     HandEvaluator.HandRank.STRAIGHT_FLUSH,
                     HandEvaluator.HandRank.FOUR_OF_A_KIND,
-                    HandEvaluator.HandRank.FULL_HOUSE -> (basePot * StrategyConfig.postflopBig).roundToInt()
+                    HandEvaluator.HandRank.FULL_HOUSE -> (basePot * StrategyConfig.postflopBig * positionMultiplier).roundToInt()
                     HandEvaluator.HandRank.FLUSH,
                     HandEvaluator.HandRank.STRAIGHT,
-                    HandEvaluator.HandRank.THREE_OF_A_KIND,
-                    HandEvaluator.HandRank.TWO_PAIR -> (basePot * StrategyConfig.postflopMed).roundToInt()
-                    HandEvaluator.HandRank.ONE_PAIR -> (basePot * StrategyConfig.postflopSmall).roundToInt()
+                    HandEvaluator.HandRank.THREE_OF_A_KIND -> (basePot * StrategyConfig.postflopMed * positionMultiplier).roundToInt()
+                    HandEvaluator.HandRank.TWO_PAIR -> {
+                        // Two pair is strong but be careful on wet boards
+                        val baseBet = (basePot * StrategyConfig.postflopMed * positionMultiplier).roundToInt()
+                        if (strength.value >= 10) baseBet else (baseBet * 0.8).roundToInt()
+                    }
+                    HandEvaluator.HandRank.ONE_PAIR -> {
+                        // Only bet strong pairs or top pair
+                        if (strength.value >= 11) (basePot * StrategyConfig.postflopSmall * positionMultiplier).roundToInt()
+                        else 0 // Check weak pairs
+                    }
                     HandEvaluator.HandRank.HIGH_CARD -> 0
                 }
                 val finalBet = min(myStack, maxOf(0, betSize))
-                println("  Post-flop bet sizing -> $finalBet")
+                println("  Post-flop bet sizing (pos mult: $positionMultiplier) -> $finalBet")
                 return finalBet
             }
             println("  No bet to call, calculating open raise...")
@@ -89,23 +106,49 @@ class BettingStrategy(
         val isRiskMood = random.nextFloat() < riskProbability
         println("  Risk mood check: $isRiskMood (probability: $riskProbability)")
         
+        // Calculate pot odds for better decision making
+        val potOdds = if (pot > 0) callAmount.toDouble() / (pot + callAmount).toDouble() else 1.0
+        val impliedOdds = if (myStack > callAmount) (callAmount.toDouble() / (pot + callAmount + (myStack - callAmount) * 0.3)) else potOdds
+        
+        println("  Pot odds: ${(potOdds * 100).toInt()}%, Implied odds: ${(impliedOdds * 100).toInt()}%")
+        
         val decision = when {
             hasStrong -> {
                 val raiseAmount = min(myStack, callAmount + minimumRaise * 2)
                 println("  STRONG HAND -> Raise to $raiseAmount")
                 raiseAmount
             }
-            hasDecent && callAmount <= smallBetThreshold -> {
-                println("  DECENT HAND within threshold -> CALL $callAmount")
-                callAmount
+            hasDecent -> {
+                // Better pot odds consideration for decent hands
+                val shouldCall = callAmount <= smallBetThreshold || 
+                                (potOdds <= 0.33 && position != PositionAnalyzer.Position.EARLY) ||
+                                (potOdds <= 0.25 && position == PositionAnalyzer.Position.EARLY)
+                if (shouldCall) {
+                    println("  DECENT HAND with good odds -> CALL $callAmount")
+                    callAmount
+                } else {
+                    println("  DECENT HAND but poor odds -> FOLD")
+                    0
+                }
             }
-            hasWeakPlayable && callAmount <= smallBlind * 2 -> {
-                println("  WEAK BUT PLAYABLE within 2xSB -> CALL $callAmount")
-                callAmount
+            hasWeakPlayable -> {
+                // More conservative with weak playable hands
+                val maxCall = when (position) {
+                    PositionAnalyzer.Position.EARLY -> smallBlind  // Very conservative
+                    PositionAnalyzer.Position.MIDDLE -> smallBlind * 1.5.toInt()
+                    else -> smallBlind * 2  // Original threshold for late/blinds
+                }
+                if (callAmount <= maxCall && potOdds <= 0.2) {
+                    println("  WEAK BUT PLAYABLE within conservative limit -> CALL $callAmount")
+                    callAmount
+                } else {
+                    println("  WEAK BUT PLAYABLE but too expensive -> FOLD")
+                    0
+                }
             }
-            // Risky play only for marginal non-playable hands
-            isRiskMood && hasMarginal && !hasWeakPlayable && callAmount <= pot / 4 -> {
-                println("  RISK MOOD + MARGINAL -> Consider bluff raise/call")
+            // Risky play only for marginal non-playable hands with very good odds
+            isRiskMood && hasMarginal && !hasWeakPlayable && callAmount <= pot / 5 && potOdds <= 0.15 -> {
+                println("  RISK MOOD + MARGINAL with excellent odds -> Consider bluff raise/call")
                 calculateRiskyPlay(callAmount, minimumRaise, myStack)
             }
             else -> {
@@ -130,8 +173,14 @@ class BettingStrategy(
         
         val hasStrong = handEvaluator.hasStrongHandWithCommunity(myCards, communityCards)
         val hasDecent = handEvaluator.hasDecentHand(myCards)
+        val hasWeakPlayable = handEvaluator.hasWeakButPlayableHand(myCards)
         
-        println("    Hand strength: Strong=$hasStrong, Decent=$hasDecent")
+        println("    Hand strength: Strong=$hasStrong, Decent=$hasDecent, WeakPlayable=$hasWeakPlayable")
+        
+        // Check for isolation opportunity against limpers
+        // This would be enhanced with actual game state analysis
+        val canIsolate = hasDecent && position in listOf(PositionAnalyzer.Position.LATE, PositionAnalyzer.Position.MIDDLE)
+        println("    Isolation opportunity: $canIsolate")
         
         val decision = when (position) {
             PositionAnalyzer.Position.EARLY -> when {
@@ -171,6 +220,33 @@ class BettingStrategy(
                     val raiseSize = min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
                     println("    LATE + DECENT -> Raise to $raiseSize")
                     raiseSize
+                }
+                // Only open very strong weak-playable hands in late position
+                hasWeakPlayable && StrategyConfig.allowLateOpenWithWeakPlayable -> {
+                    // Be selective - only suited aces, suited connectors 8+, pocket pairs
+                    val card1 = myCards.getJSONObject(0)
+                    val card2 = myCards.getJSONObject(1)
+                    val rank1 = card1.getString("rank")
+                    val rank2 = card2.getString("rank")
+                    val suit1 = card1.getString("suit")
+                    val suit2 = card2.getString("suit")
+                    val isSuited = suit1 == suit2
+                    val isPair = rank1 == rank2
+                    val value1 = CardUtils.getRankValue(rank1)
+                    val value2 = CardUtils.getRankValue(rank2)
+                    
+                    val shouldOpen = isPair || // Any pocket pair
+                                   (isSuited && (rank1 == "A" || rank2 == "A")) || // Suited aces
+                                   (isSuited && minOf(value1, value2) >= 8 && kotlin.math.abs(value1 - value2) <= 1) // Strong suited connectors
+                    
+                    if (shouldOpen) {
+                        val raiseSize = min(myStack, smallBlind * 3) // Smaller sizing for marginal hands
+                        println("    LATE + SELECT WEAK PLAYABLE -> Small raise to $raiseSize")
+                        raiseSize
+                    } else {
+                        println("    LATE + WEAK PLAYABLE (not selective) -> Check (0)")
+                        0
+                    }
                 }
                 else -> {
                     println("    LATE + Weak -> Check (0)")
