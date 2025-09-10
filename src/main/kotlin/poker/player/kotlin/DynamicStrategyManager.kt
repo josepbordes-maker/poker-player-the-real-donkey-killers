@@ -297,10 +297,10 @@ class DynamicStrategyManager(
         opponentProfile: OpponentProfile
     ): StrategicMode {
         return when {
-            // Research-based conservative multiplayer mode (NEW!)
+            // OPTIMIZED: Research-based conservative multiplayer mode - triggers earlier for better results
             StrategyConfig.conservativeMultiplayer && 
-            opponentProfile.totalOpponents >= 5 &&
-            opponentProfile.aggressivePlayers >= 2 -> StrategicMode.RESEARCH_CONSERVATIVE
+            opponentProfile.totalOpponents >= 4 &&  // Reduced from 5 to 4
+            (opponentProfile.aggressivePlayers >= 2 || opponentProfile.totalOpponents >= 6) -> StrategicMode.RESEARCH_CONSERVATIVE
             
             // Ultra-tight mode for survival spots (only in very extreme conditions)
             gameContext.tournamentPhase == TournamentPhase.BUBBLE && 

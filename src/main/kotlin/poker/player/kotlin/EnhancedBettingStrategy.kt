@@ -165,22 +165,34 @@ class EnhancedBettingStrategy(
             val isRaisePreflop = currentBuyIn > bigBlind
             val hasCallers = atBuyIn >= 2
 
-            // Anti-limp punish: limped pot (no raise), late position, decent+ hand
+            // Enhanced Anti-limp punish: limped pot (no raise), late position, decent+ hand
             if (StrategyConfig.enableAntiLimp && !isRaisePreflop && hasCallers && position == PositionAnalyzer.Position.LATE) {
                 val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
                 if (handStrength >= HandStrength.DECENT) {
                     val limpers = atBuyIn - 1 // exclude big blind
-                    val isoSize = smallBlind * (4 + max(0, limpers))
+                    // OPTIMIZED: More aggressive sizing against multiple limpers
+                    val isoSize = smallBlind * (5 + limpers * 2) // Increased from (4 + limpers)
+                    return min(myStack, isoSize)
+                }
+                // NEW: Also punish limpers with strong weak-playable hands
+                if (handStrength == HandStrength.WEAK_PLAYABLE && atBuyIn <= 3) { // Fixed variable name
+                    val isoSize = smallBlind * 4
                     return min(myStack, isoSize)
                 }
             }
 
-            // Squeeze play: raised pot with at least one caller
+            // Enhanced Squeeze play: raised pot with at least one caller
             if (StrategyConfig.enableSqueeze && isRaisePreflop && hasCallers && (position == PositionAnalyzer.Position.LATE || position == PositionAnalyzer.Position.BLINDS)) {
                 val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
+                val callers = atBuyIn - 1 // exclude raiser
                 if (handStrength >= HandStrength.STRONG) {
-                    val callers = atBuyIn - 1 // exclude raiser
-                    val target = callAmount + minimumRaise * (2 + max(0, callers))
+                    // OPTIMIZED: Better squeeze sizing based on player count
+                    val target = callAmount + minimumRaise * (3 + callers) // Increased from (2 + callers)
+                    return min(myStack, target)
+                }
+                // NEW: Light squeeze with premium decent hands against single caller
+                if (handStrength == HandStrength.DECENT && callers == 1 && isPremiumHand(myCards)) {
+                    val target = callAmount + minimumRaise * 2
                     return min(myStack, target)
                 }
             }

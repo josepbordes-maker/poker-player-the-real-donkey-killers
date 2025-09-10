@@ -244,8 +244,8 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        val conservativeMode = if (StrategyConfig.conservativeMultiplayer) " + Research Conservative" else ""
-        return "Real Donkey Killer v3.5 - Research-Based Survival Strategy ($mode$conservativeMode)"
+        val conservativeMode = if (StrategyConfig.conservativeMultiplayer) " + Enhanced Conservative" else ""
+        return "Real Donkey Killer v3.6 - Quick Win Optimizations ($mode$conservativeMode)"
     }
     
     /**

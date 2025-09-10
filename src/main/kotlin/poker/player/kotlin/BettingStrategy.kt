@@ -306,10 +306,10 @@ class BettingStrategy(
         }
         
         val bluffChance = random.nextFloat()
-        // More conservative bluffing - lower threshold and size-dependent
-        val baseBluffThreshold = 0.15f // Reduced from 0.3f
+        // OPTIMIZED: More profitable bluffing - better threshold calculation
+        val baseBluffThreshold = 0.18f // Slightly increased for LAG mode profitability
         val sizePenalty = callAmount.toFloat() / myStack.toFloat() // Penalty for larger bets
-        val bluffThreshold = maxOf(0.05f, baseBluffThreshold - sizePenalty * 0.2f)
+        val bluffThreshold = maxOf(0.08f, baseBluffThreshold - sizePenalty * 0.15f) // Less penalty
         val raiseAmount = callAmount + minimumRaise
         val affordableThreshold = myStack / 5 // Even more conservative - was /4
         val canAffordRaise = raiseAmount <= affordableThreshold
