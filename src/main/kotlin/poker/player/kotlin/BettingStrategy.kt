@@ -1,0 +1,87 @@
+package poker.player.kotlin
+
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlin.random.Random
+import kotlin.math.min
+
+class BettingStrategy(
+    private val handEvaluator: HandEvaluator,
+    private val positionAnalyzer: PositionAnalyzer
+) {
+    private val random = Random
+
+    fun calculateBet(
+        myCards: JSONArray,
+        myStack: Int,
+        myBet: Int,
+        currentBuyIn: Int,
+        pot: Int,
+        smallBlind: Int,
+        minimumRaise: Int,
+        position: PositionAnalyzer.Position
+    ): Int {
+        // Calculate call amount
+        val callAmount = currentBuyIn - myBet
+        
+        // Safety check - can't bet more than we have
+        if (callAmount >= myStack) {
+            return myStack // All-in if we must
+        }
+        
+        // If no bet to call, open-raise based on position
+        if (callAmount <= 0) {
+            return calculateOpenRaise(myCards, myStack, smallBlind, position)
+        }
+        
+        // Position-aware continuations when facing a bet
+        val smallBetThreshold = positionAnalyzer.getSmallBetThreshold(position, pot)
+
+        // Random risk-taking: 15% chance to take a risk with marginal hands
+        val isRiskMood = random.nextFloat() < 0.15f
+        
+        return when {
+            handEvaluator.hasStrongHand(myCards) -> min(myStack, callAmount + minimumRaise)
+            handEvaluator.hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
+            handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
+            callAmount <= smallBlind * 2 -> callAmount // More willing to call small bets
+            isRiskMood && handEvaluator.hasMarginalHand(myCards) && callAmount <= pot / 3 -> {
+                calculateRiskyPlay(callAmount, minimumRaise, myStack)
+            }
+            else -> 0
+        }
+    }
+    
+    private fun calculateOpenRaise(
+        myCards: JSONArray,
+        myStack: Int,
+        smallBlind: Int,
+        position: PositionAnalyzer.Position
+    ): Int {
+        return when (position) {
+            PositionAnalyzer.Position.EARLY -> when {
+                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                else -> 0
+            }
+            PositionAnalyzer.Position.MIDDLE -> when {
+                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                else -> 0
+            }
+            PositionAnalyzer.Position.LATE, PositionAnalyzer.Position.BLINDS -> when {
+                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                else -> 0
+            }
+        }
+    }
+    
+    private fun calculateRiskyPlay(callAmount: Int, minimumRaise: Int, myStack: Int): Int {
+        // Random aggressive play - sometimes raise with marginal hands
+        return if (random.nextFloat() < 0.3f && callAmount + minimumRaise <= myStack / 4) {
+            callAmount + minimumRaise // Bluff raise
+        } else {
+            callAmount // Just call
+        }
+    }
+}
