@@ -64,22 +64,15 @@ class PositionAnalyzer {
     fun getOpenRaiseSize(position: Position, smallBlind: Int): Int {
         println("      PositionAnalyzer.getOpenRaiseSize() - Position: $position, Small Blind: $smallBlind")
         
-        // MAJOR FIX: Proper preflop sizing - 2.2-2.5x instead of pot-sized opens
-        val bigBlind = smallBlind * 2
         val raiseSize = when (position) {
             Position.EARLY -> {
-                val result = (bigBlind * 2.5).toInt()  // 2.5x BB from early
-                println("      EARLY open raise size: $result (${bigBlind}×2.5 = ${smallBlind}×5)")
+                val result = smallBlind * 6  // 6x small blind from early
+                println("      EARLY open raise size: $result (${smallBlind}×6)")
                 result
             }
-            Position.MIDDLE -> {
-                val result = (bigBlind * 2.3).toInt()  // 2.3x BB from middle
-                println("      MIDDLE open raise size: $result (${bigBlind}×2.3 ≈ ${smallBlind}×4.6)")
-                result
-            }
-            Position.LATE, Position.BLINDS -> {
-                val result = (bigBlind * 2.2).toInt()  // 2.2x BB from late/blinds
-                println("      LATE/BLINDS open raise size: $result (${bigBlind}×2.2 = ${smallBlind}×4.4)")
+            Position.MIDDLE, Position.LATE, Position.BLINDS -> {
+                val result = smallBlind * 4  // 4x small blind from middle/late/blinds
+                println("      MIDDLE/LATE/BLINDS open raise size: $result (${smallBlind}×4)")
                 result
             }
         }
@@ -88,10 +81,8 @@ class PositionAnalyzer {
     }
     
     fun getStrongHandRaiseSize(smallBlind: Int): Int {
-        // MAJOR FIX: Proper sizing for strong hands - still 2.5x BB, not pot-sized
-        val bigBlind = smallBlind * 2
-        val raiseSize = (bigBlind * 2.5).toInt()  // Same as early position sizing
-        println("      PositionAnalyzer.getStrongHandRaiseSize() - Strong hand raise: $raiseSize (${bigBlind}×2.5 = ${smallBlind}×5)")
+        val raiseSize = smallBlind * 6  // 6x small blind for strong hands
+        println("      PositionAnalyzer.getStrongHandRaiseSize() - Strong hand raise: $raiseSize (${smallBlind}×6)")
         return raiseSize
     }
 }
