@@ -2,9 +2,11 @@ package poker.player.kotlin
 
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.random.Random
 
 class Player {
     private val seenCardsByGame = mutableMapOf<String, MutableSet<String>>()
+    private val random = Random
 
     enum class Position {
         EARLY, MIDDLE, LATE, BLINDS
@@ -91,15 +93,27 @@ class Player {
         // Position-aware continuations when facing a bet
         val position = getPosition(players, inAction, dealer)
         val smallBetThreshold = when (position) {
-            Position.EARLY -> pot / 6
-            Position.MIDDLE -> pot / 5
-            Position.LATE, Position.BLINDS -> pot / 4
+            Position.EARLY -> pot / 4  // More lenient than pot/6
+            Position.MIDDLE -> pot / 3 // More lenient than pot/5
+            Position.LATE, Position.BLINDS -> pot / 2 // More lenient than pot/4
         }
 
+        // Random risk-taking: 15% chance to take a risk with marginal hands
+        val isRiskMood = random.nextFloat() < 0.15f
+        
         return when {
             hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise)
             hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
-            callAmount <= smallBlind -> callAmount
+            hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
+            callAmount <= smallBlind * 2 -> callAmount // More willing to call small bets
+            isRiskMood && hasMarginalHand(myCards) && callAmount <= pot / 3 -> {
+                // Random aggressive play - sometimes raise with marginal hands
+                if (random.nextFloat() < 0.3f && callAmount + minimumRaise <= myStack / 4) {
+                    callAmount + minimumRaise // Bluff raise
+                } else {
+                    callAmount // Just call
+                }
+            }
             else -> 0
         }
     }
@@ -133,14 +147,59 @@ class Player {
         val suit1 = card1.getString("suit")
         val suit2 = card2.getString("suit")
         
-        // Decent hands: any pair, high cards, suited connectors
+        // Expanded decent hands: any pair, high cards, suited connectors, broadway cards
         return when {
             rank1 == rank2 -> true // Any pair
-            getRankValue(rank1) >= 10 || getRankValue(rank2) >= 10 -> true // High cards
-            suit1 == suit2 && Math.abs(getRankValue(rank1) - getRankValue(rank2)) <= 1 -> true // Suited connectors
+            getRankValue(rank1) >= 9 || getRankValue(rank2) >= 9 -> true // 9+ cards (was 10+)
+            suit1 == suit2 && Math.abs(getRankValue(rank1) - getRankValue(rank2)) <= 2 -> true // Suited connectors/gappers
             (rank1 == "A" || rank2 == "A") -> true // Any ace
+            (rank1 == "K" || rank2 == "K") -> true // Any king
+            isBroadway(rank1) && isBroadway(rank2) -> true // Two broadway cards (10, J, Q, K, A)
             else -> false
         }
+    }
+    
+    private fun hasWeakButPlayableHand(cards: JSONArray): Boolean {
+        if (cards.length() != 2) return false
+        
+        val card1 = cards.getJSONObject(0)
+        val card2 = cards.getJSONObject(1)
+        val rank1 = card1.getString("rank")
+        val rank2 = card2.getString("rank")
+        val suit1 = card1.getString("suit")
+        val suit2 = card2.getString("suit")
+        
+        // Weak but playable: suited cards, connected cards, any face card
+        return when {
+            suit1 == suit2 -> true // Any suited cards
+            Math.abs(getRankValue(rank1) - getRankValue(rank2)) <= 1 -> true // Connected cards
+            getRankValue(rank1) >= 11 || getRankValue(rank2) >= 11 -> true // Any jack or higher
+            (getRankValue(rank1) >= 8 && getRankValue(rank2) >= 8) -> true // Both cards 8 or higher
+            else -> false
+        }
+    }
+    
+    private fun hasMarginalHand(cards: JSONArray): Boolean {
+        if (cards.length() != 2) return false
+        
+        val card1 = cards.getJSONObject(0)
+        val card2 = cards.getJSONObject(1)
+        val rank1 = card1.getString("rank")
+        val rank2 = card2.getString("rank")
+        val suit1 = card1.getString("suit")
+        val suit2 = card2.getString("suit")
+        
+        // Marginal hands for bluffing: one high card, suited gaps, etc.
+        return when {
+            getRankValue(rank1) >= 10 || getRankValue(rank2) >= 10 -> true // At least one high card
+            suit1 == suit2 && Math.abs(getRankValue(rank1) - getRankValue(rank2)) <= 3 -> true // Suited with small gap
+            Math.abs(getRankValue(rank1) - getRankValue(rank2)) <= 2 -> true // Small gap connectors
+            else -> false
+        }
+    }
+    
+    private fun isBroadway(rank: String): Boolean {
+        return getRankValue(rank) >= 10
     }
     
     private fun getRankValue(rank: String): Int {
