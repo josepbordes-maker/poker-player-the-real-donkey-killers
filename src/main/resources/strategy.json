@@ -8,7 +8,7 @@
   "postflopMed": 0.50,
   "postflopBig": 0.65,
   "antiLimp": true,
-  "squeeze": false,
+  "squeeze": true,
   "structuredLogs": true,
   "quietLogs": true,
   "conservativeMultiplayer": true,

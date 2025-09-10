@@ -207,8 +207,14 @@ class PostFlopStrategy(
         smallBlind: Int
     ): Int {
         val cBetFrequency = calculateCBetFrequency(handStrength, boardTexture, position, opponentCount)
+        val randomRoll = random.nextFloat()
         
-        if (random.nextFloat() > cBetFrequency) return 0 // Check
+        println("    C-BET DECISION: frequency=${(cBetFrequency * 100).toInt()}%, roll=${(randomRoll * 100).toInt()}%")
+        
+        if (randomRoll > cBetFrequency) {
+            println("    C-BET RESULT: CHECK (rolled above frequency)")
+            return 0 // Check
+        }
         
         // Calculate bet sizing based on hand strength and board texture
         val betSizing = when (handStrength.madeHand) {
@@ -231,14 +237,21 @@ class PostFlopStrategy(
             }
         }
         
-        if (betSizing == 0.0) return 0
+        if (betSizing == 0.0) {
+            println("    C-BET RESULT: CHECK (bet sizing = 0)")
+            return 0
+        }
         
         val betAmount = (pot * betSizing).toInt()
-        return min(myStack, max(smallBlind * 2, betAmount))
+        val finalBet = min(myStack, max(smallBlind * 2, betAmount))
+        val betPct = (betSizing * 100).toInt()
+        
+        println("    C-BET RESULT: BET $finalBet (${betPct}% of pot $pot)")
+        return finalBet
     }
     
     /**
-     * Calculate c-bet frequency based on multiple factors
+     * Calculate c-bet frequency based on multiple factors - FIXED: Much more selective c-betting
      */
     private fun calculateCBetFrequency(
         handStrength: PostFlopHandStrength,
@@ -246,38 +259,41 @@ class PostFlopStrategy(
         position: PositionAnalyzer.Position,
         opponentCount: Int
     ): Float {
+        // MAJOR FIX: Drastically reduced c-bet frequencies to stop 100% aggression
         var frequency = when (handStrength.madeHand) {
-            MadeHandStrength.NUTS, MadeHandStrength.VERY_STRONG -> 0.95f
-            MadeHandStrength.STRONG -> 0.85f
-            MadeHandStrength.MEDIUM -> 0.65f
-            MadeHandStrength.WEAK -> 0.35f
-            MadeHandStrength.VERY_WEAK -> 0.25f
+            MadeHandStrength.NUTS, MadeHandStrength.VERY_STRONG -> 0.90f // Still high for value
+            MadeHandStrength.STRONG -> 0.70f // Reduced from 0.85f
+            MadeHandStrength.MEDIUM -> 0.40f // Reduced from 0.65f - major change
+            MadeHandStrength.WEAK -> 0.15f // Reduced from 0.35f - major change
+            MadeHandStrength.VERY_WEAK -> 0.05f // Reduced from 0.25f - major change
         }
         
-        // Adjust for draws
-        if (handStrength.draws.hasStrongDraw()) frequency += 0.3f
-        else if (handStrength.draws.hasDecentDraw()) frequency += 0.15f
+        // More conservative draw adjustments
+        if (handStrength.draws.hasStrongDraw()) frequency += 0.25f // Reduced from 0.3f
+        else if (handStrength.draws.hasDecentDraw()) frequency += 0.10f // Reduced from 0.15f
         
-        // Adjust for board texture
-        if (boardTexture.bluffFriendly) frequency += 0.2f
-        if (boardTexture.dynamic) frequency += 0.1f // More c-betting on dangerous boards
-        if (boardTexture.wetness > 0.8) frequency -= 0.15f // Less bluffing on very wet boards
+        // Board texture adjustments - more conservative
+        if (boardTexture.bluffFriendly && boardTexture.wetness < 0.3) {
+            frequency += 0.15f // Only on very dry boards
+        }
+        if (boardTexture.dynamic) frequency -= 0.05f // Less c-betting on dangerous boards
+        if (boardTexture.wetness > 0.6) frequency -= 0.20f // Much less bluffing on wet boards
         
-        // Adjust for position
+        // Position adjustments - more conservative
         when (position) {
-            PositionAnalyzer.Position.LATE -> frequency += 0.1f
-            PositionAnalyzer.Position.EARLY -> frequency -= 0.1f
+            PositionAnalyzer.Position.LATE -> frequency += 0.05f // Reduced from 0.1f
+            PositionAnalyzer.Position.EARLY -> frequency -= 0.15f // More reduction for early
             else -> {} // No adjustment
         }
         
-        // Adjust for opponent count
-        frequency -= (opponentCount - 1) * 0.15f // Reduce with more opponents
+        // Stronger opponent count penalty
+        frequency -= (opponentCount - 1) * 0.20f // Increased from 0.15f
         
-        return frequency.coerceIn(0.0f, 1.0f)
+        return frequency.coerceIn(0.0f, 0.85f) // Cap at 85% max frequency
     }
     
     /**
-     * Calculate post-flop defense against bets
+     * Calculate post-flop defense against bets - IMPROVED: Price-gated turn decisions
      */
     private fun calculatePostFlopDefense(
         handStrength: PostFlopHandStrength,
@@ -292,8 +308,39 @@ class PostFlopStrategy(
     ): Int {
         val potOdds = callAmount.toDouble() / (pot + callAmount)
         val requiredEquity = potOdds
+        val betSizeRatio = callAmount.toDouble() / pot
         
-        return when (handStrength.madeHand) {
+        // MAJOR FIX: Hard equity gate - estimate our equity and compare to required
+        val estimatedEquity = estimateHandEquity(handStrength, boardTexture, street)
+        val equityThreshold = requiredEquity * 0.95 // Need 95% of required equity minimum
+        
+        // Equity gate: fold if we don't have enough equity (unless we have live backdoors)
+        if (estimatedEquity < equityThreshold && !handStrength.draws.hasDecentDraw()) {
+            println("    EQUITY GATE: Fold - estimated equity $estimatedEquity < threshold $equityThreshold")
+            return 0
+        }
+        
+        // INSTRUMENTED LOGGING: Add detailed decision metrics
+        val betPct = (betSizeRatio * 100).toInt()
+        val reqEq = (requiredEquity * 100).toInt()
+        val estEq = (estimatedEquity * 100).toInt()
+        println("    DECISION METRICS: pot=$pot, facing=$callAmount, pct=${betPct}%, reqEq=${reqEq}%, estEq=${estEq}%")
+        
+        // MAJOR FIX: Price-gated turn decisions - fold marginal hands vs big bets
+        if (street == "turn" && betSizeRatio >= 0.6) {
+            // Against big turn bets (60%+ pot), need strong equity
+            when (handStrength.madeHand) {
+                MadeHandStrength.WEAK, MadeHandStrength.MEDIUM -> {
+                    // Only continue with strong draws or better
+                    if (!handStrength.draws.hasStrongDraw() || handStrength.draws.outs < 12) {
+                        return 0 // Fold marginal hands vs big turn bets
+                    }
+                }
+                else -> {} // Strong hands can continue
+            }
+        }
+        
+        val finalDecision = when (handStrength.madeHand) {
             MadeHandStrength.NUTS -> {
                 // Always raise nuts
                 val raiseSize = (callAmount + minimumRaise * 2.5 * adjustment.valueBetSizing).toInt()
@@ -317,15 +364,50 @@ class PostFlopStrategy(
             }
             
             MadeHandStrength.MEDIUM -> {
-                val adjustedPotOdds = requiredEquity / adjustment.callThreshold
-                if (callAmount <= pot * 0.6 && potOdds <= adjustedPotOdds) {
-                    callAmount
-                } else 0
+                // IMPROVED: Better turn discipline for medium hands
+                if (street == "turn") {
+                    // On turn, be more selective with medium hands
+                    val hasGoodDraws = handStrength.draws.hasDecentDraw() || handStrength.draws.outs >= 8
+                    val affordablePrice = callAmount <= pot * 0.4 // Tighter price on turn
+                    val goodPosition = position in listOf(PositionAnalyzer.Position.LATE)
+                    
+                    if ((hasGoodDraws || goodPosition) && affordablePrice) {
+                        callAmount
+                    } else {
+                        0 // Fold medium hands vs big turn bets
+                    }
+                } else {
+                    // Flop/river - original logic
+                    val adjustedPotOdds = requiredEquity / adjustment.callThreshold
+                    if (callAmount <= pot * 0.6 && potOdds <= adjustedPotOdds) {
+                        callAmount
+                    } else 0
+                }
             }
             
             MadeHandStrength.WEAK -> {
-                if (handStrength.draws.hasStrongDraw()) {
-                    // Semi-bluff raise or call
+                // IMPROVED: Better river discipline and block bet response
+                if (street == "river") {
+                    // River: no more draws, need showdown value or bluff-catching ability
+                    val isBlockBet = callAmount <= pot * 0.33 // Block bet threshold
+                    val isBigBet = callAmount >= pot * 0.67 // Big bet threshold
+                    
+                    when {
+                        isBlockBet -> {
+                            // Against block bets: call thinly if we beat some bluffs
+                            if (random.nextFloat() < 0.4) callAmount else 0
+                        }
+                        isBigBet -> {
+                            // Against big bets: fold weak hands, they're rarely bluffing
+                            0
+                        }
+                        else -> {
+                            // Medium bets: very selective calling
+                            if (callAmount <= pot * 0.4 * adjustment.callThreshold) callAmount else 0
+                        }
+                    }
+                } else if (handStrength.draws.hasStrongDraw()) {
+                    // Semi-bluff raise or call on flop/turn
                     if (position == PositionAnalyzer.Position.LATE && random.nextFloat() < 0.3) {
                         val raiseSize = (callAmount + minimumRaise).toInt()
                         min(myStack, raiseSize)
@@ -343,6 +425,16 @@ class PostFlopStrategy(
                 } else 0
             }
         }
+        
+        // Final decision logging with all metrics
+        val action = when {
+            finalDecision == 0 -> "FOLD"
+            finalDecision == callAmount -> "CALL"
+            else -> "RAISE to $finalDecision"
+        }
+        println("    FINAL DECISION: $action (pot=$pot, facing=$callAmount, ${betPct}% pot, reqEq=${reqEq}%, estEq=${estEq}%)")
+        
+        return finalDecision
     }
     
     /**
@@ -492,6 +584,53 @@ class PostFlopStrategy(
             overcards = overcards,
             outs = outs
         )
+    }
+    
+    /**
+     * Estimate hand equity for the equity gate system
+     */
+    private fun estimateHandEquity(
+        handStrength: PostFlopHandStrength, 
+        boardTexture: BoardTexture, 
+        street: String
+    ): Double {
+        // Base equity from made hand strength
+        val baseEquity = when (handStrength.madeHand) {
+            MadeHandStrength.NUTS -> 0.95
+            MadeHandStrength.VERY_STRONG -> 0.85
+            MadeHandStrength.STRONG -> 0.70
+            MadeHandStrength.MEDIUM -> 0.45
+            MadeHandStrength.WEAK -> 0.25
+            MadeHandStrength.VERY_WEAK -> 0.15
+        }
+        
+        // Add equity from draws (approximate)
+        val drawEquity = when {
+            handStrength.draws.nutFlushDraw -> 0.35 // ~9 outs * 4% = 36%
+            handStrength.draws.flushDraw -> 0.32
+            handStrength.draws.openEndedStraightDraw -> 0.32 // ~8 outs * 4% = 32%
+            handStrength.draws.hasStrongDraw() -> 0.28
+            handStrength.draws.hasDecentDraw() -> 0.20
+            else -> 0.0
+        }
+        
+        // Adjust for street (fewer cards to come = lower draw equity)
+        val streetMultiplier = when (street) {
+            "flop" -> 1.0 // Two cards to come
+            "turn" -> 0.5 // One card to come  
+            "river" -> 0.0 // No cards to come
+            else -> 1.0
+        }
+        
+        // Adjust for board texture (our equity is lower on dangerous boards)
+        val boardAdjustment = when {
+            boardTexture.wetness > 0.8 -> 0.9 // Reduce equity on very wet boards
+            boardTexture.dynamic -> 0.95
+            else -> 1.0
+        }
+        
+        val totalEquity = (baseEquity + (drawEquity * streetMultiplier)) * boardAdjustment
+        return totalEquity.coerceIn(0.05, 0.95) // Keep within reasonable bounds
     }
     
     private fun hasOvercards(myCards: JSONArray, communityCards: JSONArray): Boolean {

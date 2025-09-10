@@ -103,30 +103,31 @@ class EnhancedBettingStrategy(
             }
         }
         
-        // Standard opening sizing based on position and hand strength
+        // MAJOR FIX: Proper preflop sizing - 2.2-2.5x BB instead of pot-sized opens
+        val bigBlind = smallBlind * 2
         val baseSize = when (position) {
             PositionAnalyzer.Position.EARLY -> when {
-                handStrength >= HandStrength.STRONG -> smallBlind * 6
+                handStrength >= HandStrength.STRONG -> (bigBlind * 2.5).toInt() // 2.5x BB
                 else -> 0 // Very tight from early position
             }
             PositionAnalyzer.Position.MIDDLE -> when {
-                handStrength >= HandStrength.STRONG -> smallBlind * 6
-                handStrength >= HandStrength.DECENT -> smallBlind * 4
+                handStrength >= HandStrength.STRONG -> (bigBlind * 2.5).toInt() // 2.5x BB
+                handStrength >= HandStrength.DECENT -> (bigBlind * 2.3).toInt() // 2.3x BB
                 else -> 0
             }
             PositionAnalyzer.Position.LATE -> when {
-                handStrength >= HandStrength.STRONG -> smallBlind * 6
-                handStrength >= HandStrength.DECENT -> smallBlind * 4
-                handStrength >= HandStrength.WEAK_PLAYABLE && (isStealSpot(players) || isHeadsUp) -> smallBlind * 3
+                handStrength >= HandStrength.STRONG -> (bigBlind * 2.5).toInt() // 2.5x BB
+                handStrength >= HandStrength.DECENT -> (bigBlind * 2.3).toInt() // 2.3x BB
+                handStrength >= HandStrength.WEAK_PLAYABLE && (isStealSpot(players) || isHeadsUp) -> (bigBlind * 2.2).toInt() // 2.2x BB for steals
                 else -> 0
             }
             PositionAnalyzer.Position.BLINDS -> when {
-                handStrength >= HandStrength.STRONG -> smallBlind * 6
+                handStrength >= HandStrength.STRONG -> (bigBlind * 2.5).toInt() // 2.5x BB
                 // Heads-up: much wider opening range from SB (70-80% of hands)
-                isHeadsUp && handStrength >= HandStrength.DECENT -> smallBlind * 5
-                isHeadsUp && handStrength >= HandStrength.WEAK_PLAYABLE -> smallBlind * 3
+                isHeadsUp && handStrength >= HandStrength.DECENT -> (bigBlind * 2.3).toInt() // 2.3x BB HU
+                isHeadsUp && handStrength >= HandStrength.WEAK_PLAYABLE -> (bigBlind * 2.2).toInt() // 2.2x BB HU steal
                 // Non-heads-up: be more conservative from blinds
-                handStrength >= HandStrength.DECENT -> smallBlind * 4
+                handStrength >= HandStrength.DECENT -> (bigBlind * 2.3).toInt() // 2.3x BB
                 else -> 0
             }
         }
