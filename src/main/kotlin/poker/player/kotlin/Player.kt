@@ -53,6 +53,7 @@ class Player {
     }
 
     fun version(): String {
-        return "Real Donkey Killer v1.2"
+        val mode = StrategyConfig.mode().name
+        return "Real Donkey Killer v1.2 ($mode)"
     }
 }
