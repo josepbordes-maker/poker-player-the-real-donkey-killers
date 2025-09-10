@@ -1,5 +1,5 @@
 {
-  "mode": "STANDARD",
+  "mode": "LAG",
   "riskFreq": null,
   "smallBetMult": null,
   "bluffRaise": null
