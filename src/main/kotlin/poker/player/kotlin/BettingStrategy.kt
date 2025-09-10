@@ -30,8 +30,27 @@ class BettingStrategy(
             return myStack // All-in if we must
         }
         
-        // If no bet to call, open-raise based on position
+        // If no bet to call
         if (callAmount <= 0) {
+            // Post-flop continuation/value bet sizing using hand rank
+            if (communityCards.length() >= 3) {
+                val strength = handEvaluator.evaluateBestHand(myCards, communityCards)
+                val basePot = if (pot > 0) pot else smallBlind * 4 // minimal pot fallback
+                val betSize = when (strength.rank) {
+                    HandEvaluator.HandRank.ROYAL_FLUSH,
+                    HandEvaluator.HandRank.STRAIGHT_FLUSH,
+                    HandEvaluator.HandRank.FOUR_OF_A_KIND,
+                    HandEvaluator.HandRank.FULL_HOUSE -> (basePot * 2) / 3
+                    HandEvaluator.HandRank.FLUSH,
+                    HandEvaluator.HandRank.STRAIGHT,
+                    HandEvaluator.HandRank.THREE_OF_A_KIND,
+                    HandEvaluator.HandRank.TWO_PAIR -> basePot / 2
+                    HandEvaluator.HandRank.ONE_PAIR -> basePot / 3
+                    HandEvaluator.HandRank.HIGH_CARD -> 0
+                }
+                return min(myStack, maxOf(0, betSize))
+            }
+            // Pre-flop open-raise based on position
             return calculateOpenRaise(myCards, communityCards, myStack, smallBlind, position)
         }
         
@@ -51,7 +70,7 @@ class BettingStrategy(
             handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
             // Remove unconditional small-bet calls; require at least a playable hand
             // Risky play only for marginal non-playable hands
-            isRiskMood && handEvaluator.hasMarginalHand(myCards) && !handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= pot / 3 -> {
+            isRiskMood && handEvaluator.hasMarginalHand(myCards) && !handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= pot / 4 -> {
                 calculateRiskyPlay(callAmount, minimumRaise, myStack)
             }
             else -> 0
