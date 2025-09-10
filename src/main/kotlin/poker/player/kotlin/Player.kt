@@ -108,7 +108,7 @@ class Player {
         val isRiskMood = random.nextFloat() < 0.15f
         
         return when {
-            hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise)
+            hasStrongHand(myCards) -> Math.min(myStack, callAmount + minimumRaise * 2)
             hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
             hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
             // Remove unconditional small-bet calls; require at least a playable hand
