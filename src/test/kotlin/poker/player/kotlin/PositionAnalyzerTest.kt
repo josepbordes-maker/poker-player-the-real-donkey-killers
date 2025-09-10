@@ -105,15 +105,15 @@ class PositionAnalyzerTest {
         
         assertEquals(25, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, pot))
         assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.MIDDLE, pot))
-        assertEquals(50, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, pot))
-        assertEquals(50, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.BLINDS, pot))
+        assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, pot)) // Changed from pot/2 to pot/3
+        assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.BLINDS, pot)) // Changed from pot/2 to pot/3
     }
     
     @Test
     fun `getSmallBetThreshold scales with pot size`() {
         assertEquals(50, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, 200))
         assertEquals(66, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.MIDDLE, 200))
-        assertEquals(100, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, 200))
+        assertEquals(66, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, 200)) // Changed from pot/2 to pot/3
     }
     
     @Test

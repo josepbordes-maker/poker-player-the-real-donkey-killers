@@ -208,9 +208,12 @@ class BettingStrategy(
         }
         
         val bluffChance = random.nextFloat()
-        val bluffThreshold = 0.3f
+        // More conservative bluffing - lower threshold and size-dependent
+        val baseBluffThreshold = 0.15f // Reduced from 0.3f
+        val sizePenalty = callAmount.toFloat() / myStack.toFloat() // Penalty for larger bets
+        val bluffThreshold = maxOf(0.05f, baseBluffThreshold - sizePenalty * 0.2f)
         val raiseAmount = callAmount + minimumRaise
-        val affordableThreshold = myStack / 4
+        val affordableThreshold = myStack / 5 // Even more conservative - was /4
         val canAffordRaise = raiseAmount <= affordableThreshold
         
         println("    Bluff chance: $bluffChance (threshold: $bluffThreshold)")

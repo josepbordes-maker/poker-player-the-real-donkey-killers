@@ -1,10 +1,12 @@
 {
-  "mode": "LAG",
-  "riskFreq": null,
-  "smallBetMult": null,
-  "bluffRaise": null,
+  "mode": "STANDARD",
+  "riskFreq": 0.08,
+  "smallBetMult": 1.0,
+  "bluffRaise": true,
   "rainMan": true,
-  "postflopSmall": null,
-  "postflopMed": null,
-  "postflopBig": null
+  "postflopSmall": 0.4,
+  "postflopMed": 0.6,
+  "postflopBig": 0.75,
+  "antiLimp": true,
+  "squeeze": true
 }

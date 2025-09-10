@@ -17,6 +17,8 @@ class Player {
     private var lastAction: String = ""
     private var wasPreFlopAggressor: Boolean = false
     private var lastBetAmount: Int = 0
+    private var lastGameId: String = ""
+    private var prevCurrentBuyIn: Int = 0
 
     fun betRequest(game_state: JSONObject): Int {
         // Parse game state
@@ -38,61 +40,72 @@ class Player {
         val dealer = game_state.getInt("dealer")
         val round = game_state.optInt("round", 0)
         
-        println("\n=== BETTING DECISION ANALYSIS ===")
-        println("Game ID: $gameId, Round: $round")
-        println("My Position: Player $inAction (dealer: $dealer)")
-        println("My Stack: $myStack, My Current Bet: $myBet")
-        println("Current Buy-in: $currentBuyIn, Pot: $pot")
-        println("Small Blind: $smallBlind, Min Raise: $minimumRaise")
+        // Create a unique identifier for this decision for log tracking  
+        val shortGameId = gameId.takeLast(6)
+        val community = game_state.optJSONArray("community_cards") ?: JSONArray()
+        val street = when (community.length()) {
+            0 -> "PRE"
+            3 -> "FLP"
+            4 -> "TRN"
+            5 -> "RIV"
+            else -> "UNK"
+        }
+        val decisionId = "[$shortGameId/$street/P$inAction]"
+        
+        println("\n=== BETTING DECISION ANALYSIS $decisionId ===")
+        println("$decisionId Game ID: $gameId, Round: $round")
+        println("$decisionId My Position: Player $inAction (dealer: $dealer)")
+        println("$decisionId My Stack: $myStack, My Current Bet: $myBet")
+        println("$decisionId Current Buy-in: $currentBuyIn, Pot: $pot")
+        println("$decisionId Small Blind: $smallBlind, Min Raise: $minimumRaise")   
         
         // Format and log my cards
         val myCardsStr = formatCards(myCards)
-        println("My Cards: $myCardsStr")
+        println("$decisionId My Cards: $myCardsStr")
         
         // Remember seen cards (hole + community) for this game
         gameStateManager.addSeenCards(gameId, myCards)
-        val community = game_state.optJSONArray("community_cards") ?: JSONArray()
-        if (community.length() > 0) {
+        val communityStr = if (community.length() > 0) {
             gameStateManager.addSeenCards(gameId, community)
-            val communityStr = formatCards(community)
-            println("Community Cards: $communityStr")
+            formatCards(community)
         } else {
-            println("Community Cards: None (Pre-flop)")
+            "None (Pre-flop)"
         }
+        println("$decisionId Community Cards: $communityStr")
 
         // Get position for betting decision
         val position = positionAnalyzer.getPosition(players, inAction, dealer)
-        println("My Position: ${position.name}")
+        println("$decisionId My Position: ${position.name}")
         
         // Log active players and their stacks
-        logPlayerStates(players, inAction)
+        logPlayerStates(players, inAction, decisionId)
         
         // Calculate call amount
         val callAmount = currentBuyIn - myBet
-        println("Call Amount: $callAmount")
+        println("$decisionId Call Amount: $callAmount")
         
         // Record opponent actions for modeling
-        println("Recording opponent actions for modeling...")
-        recordOpponentActions(players, currentBuyIn, pot, position, community)
+        println("$decisionId Recording opponent actions for modeling...")
+        recordOpponentActions(players, currentBuyIn, pot, position, community, decisionId)
         
         // Determine if this is post-flop play
         val isPostFlop = community.length() >= 3
-        val street = when (community.length()) {
+        val streetFull = when (community.length()) {
             0 -> "PRE-FLOP"
             3 -> "FLOP"
             4 -> "TURN"
             5 -> "RIVER"
             else -> "UNKNOWN"
         }
-        println("Street: $street (isPostFlop: $isPostFlop)")
+        println("$decisionId Street: $streetFull (isPostFlop: $isPostFlop)")
         
         // Find who was the aggressor (last to raise)
-        val aggressorId = findLastAggressor(players, currentBuyIn)
+        val aggressorId = findLastAggressor(players, currentBuyIn, prevCurrentBuyIn)
         val opponentCount = countActivePlayers(players) - 1
-        println("Aggressor: ${aggressorId ?: "None"}, Opponent Count: $opponentCount")
-        println("Was Pre-flop Aggressor: $wasPreFlopAggressor")
+        println("$decisionId Aggressor: ${aggressorId ?: "None"}, Opponent Count: $opponentCount")
+        println("$decisionId Was Pre-flop Aggressor: $wasPreFlopAggressor")
         
-        println("Using DYNAMIC WORLD CHAMPION strategy...")
+        println("$decisionId Using DYNAMIC WORLD CHAMPION strategy...")
         val dynamicDecision = dynamicStrategyManager.calculateOptimalBet(
             myCards = myCards,
             communityCards = community,
@@ -113,19 +126,20 @@ class Player {
         val betAmount = dynamicDecision.amount
         
         // Update our action tracking
-        updateActionTracking(betAmount, currentBuyIn, myBet)
+        updateActionTracking(betAmount, currentBuyIn, myBet, gameId, community)
         
         // Log final decision
         val actionDescription = when {
+            callAmount == 0 && betAmount == 0 -> "CHECK"
             betAmount == 0 -> "FOLD"
             betAmount == callAmount -> "CALL ($callAmount)"
             betAmount > callAmount -> "RAISE to $betAmount (raise by ${betAmount - callAmount})"
             betAmount < callAmount && callAmount > 0 -> "ALL-IN $betAmount (short of call)"
             else -> "BET $betAmount"
         }
-        println("FINAL DECISION: $actionDescription")
-        println("Action Tracking Updated: lastAction=$lastAction, lastBetAmount=$lastBetAmount")
-        println("=== END BETTING ANALYSIS ===\n")
+        println("$decisionId FINAL DECISION: $actionDescription")
+        println("$decisionId Action Tracking Updated: lastAction=$lastAction, lastBetAmount=$lastBetAmount")
+        println("=== END BETTING ANALYSIS $decisionId ===\n")
         
         return betAmount
     }
@@ -155,8 +169,8 @@ class Player {
         return cardStrings.joinToString(" ")
     }
     
-    private fun logPlayerStates(players: JSONArray, myIndex: Int) {
-        println("--- Player States ---")
+    private fun logPlayerStates(players: JSONArray, myIndex: Int, decisionId: String) {
+        println("$decisionId --- Player States ---")
         for (i in 0 until players.length()) {
             val player = players.getJSONObject(i)
             val name = player.optString("name", "Player $i")
@@ -165,14 +179,14 @@ class Player {
             val status = player.optString("status", "active")
             val indicator = if (i == myIndex) " (ME)" else ""
             
-            println("Player $i: $name$indicator - Stack: $stack, Bet: $bet, Status: $status")
+            println("$decisionId Player $i: $name$indicator - Stack: $stack, Bet: $bet, Status: $status")
         }
-        println("--- End Player States ---")
+        println("$decisionId --- End Player States ---")
     }
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v3.0 - Dynamic World Champion ($mode)"
+        return "Real Donkey Killer v3.1 - Dynamic World Champion ($mode)"
     }
     
     /**
@@ -183,7 +197,8 @@ class Player {
         currentBuyIn: Int,
         pot: Int,
         position: PositionAnalyzer.Position,
-        community: JSONArray
+        community: JSONArray,
+        decisionId: String
     ) {
         for (i in 0 until players.length()) {
             val player = players.getJSONObject(i)
@@ -193,6 +208,7 @@ class Player {
             
             // Determine action based on bet amount
             val action = when {
+                playerBet == 0 && currentBuyIn == 0 -> "check"
                 playerBet == 0 -> "fold"
                 playerBet == currentBuyIn -> "call"
                 playerBet > currentBuyIn -> "raise"
@@ -223,40 +239,57 @@ class Player {
     /**
      * Find the last player to raise (aggressor)
      */
-    private fun findLastAggressor(players: JSONArray, currentBuyIn: Int): String? {
+    private fun findLastAggressor(players: JSONArray, currentBuyIn: Int, prevCurrentBuyIn: Int): String? {
         var lastAggressor: String? = null
-        var highestBet = 0
         
-        for (i in 0 until players.length()) {
-            val player = players.getJSONObject(i)
-            val playerBet = player.getInt("bet")
-            
-            if (playerBet > highestBet && playerBet == currentBuyIn) {
-                lastAggressor = player.optString("name", "Player_$i")
-                highestBet = playerBet
+        // If current buy-in increased from previous, someone raised
+        if (currentBuyIn > prevCurrentBuyIn) {
+            for (i in 0 until players.length()) {
+                val player = players.getJSONObject(i)
+                val playerBet = player.getInt("bet")
+                
+                // The player with bet equal to current buy-in is the aggressor
+                if (playerBet == currentBuyIn && currentBuyIn > 0) {
+                    lastAggressor = player.optString("name", "Player_$i")
+                    break
+                }
             }
         }
         
+        println("Aggressor Detection: prevBuyIn=$prevCurrentBuyIn, currentBuyIn=$currentBuyIn, aggressor=$lastAggressor")
         return lastAggressor
     }
     
     /**
-     * Count active players (those with chips)
+     * Count active players (those still in the hand)
      */
     private fun countActivePlayers(players: JSONArray): Int {
         var count = 0
         for (i in 0 until players.length()) {
             val player = players.getJSONObject(i)
-            if (player.getInt("stack") > 0) count++
+            val status = player.optString("status", "active")
+            // Count players who are still active in the hand
+            if (status == "active" || (status.isEmpty() && player.getInt("stack") > 0)) {
+                count++
+            }
         }
+        println("Active Player Count: $count (status-based counting)")
         return count
     }
     
     /**
      * Update our action tracking for strategy analysis
      */
-    private fun updateActionTracking(betAmount: Int, currentBuyIn: Int, myBet: Int) {
+    private fun updateActionTracking(betAmount: Int, currentBuyIn: Int, myBet: Int, gameId: String, community: JSONArray) {
         val callAmount = currentBuyIn - myBet
+        
+        // Reset aggressor tracking for new games or returning to preflop
+        if (gameId != lastGameId || (community.length() == 0 && lastGameId.isNotEmpty())) {
+            wasPreFlopAggressor = false
+            lastGameId = gameId
+            prevCurrentBuyIn = 0
+            println("Action Tracking: Reset for new game/preflop (gameId: $gameId)")
+        }
         
         lastAction = when {
             betAmount == 0 -> "fold"
@@ -268,8 +301,13 @@ class Player {
         lastBetAmount = betAmount
         
         // Track if we were the pre-flop aggressor
-        if (currentBuyIn == 0 && betAmount > 0) {
+        val isPreflop = community.length() == 0
+        if (isPreflop && betAmount > callAmount) {
             wasPreFlopAggressor = true
+            println("Action Tracking: Set wasPreFlopAggressor = true (betAmount=$betAmount > callAmount=$callAmount)")
         }
+        
+        // Update previous buy-in for aggressor detection
+        prevCurrentBuyIn = currentBuyIn
     }
 }

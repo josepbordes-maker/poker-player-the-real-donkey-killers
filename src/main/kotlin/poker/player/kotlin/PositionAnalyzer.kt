@@ -41,23 +41,24 @@ class PositionAnalyzer {
         
         val threshold = when (position) {
             Position.EARLY -> {
-                val result = pot / 4  // More lenient than pot/6
+                val result = pot / 4  // Conservative for early position
                 println("      EARLY position threshold: $result (pot/4)")
                 result
             }
             Position.MIDDLE -> {
-                val result = pot / 3 // More lenient than pot/5
+                val result = pot / 3 // Moderate for middle position
                 println("      MIDDLE position threshold: $result (pot/3)")
                 result
             }
             Position.LATE, Position.BLINDS -> {
-                val result = pot / 2 // More lenient than pot/4
-                println("      LATE/BLINDS position threshold: $result (pot/2)")
+                // Changed from pot/2 to pot/3 for better defense against small opens
+                val result = pot / 3 // More reasonable for late/blinds
+                println("      LATE/BLINDS position threshold: $result (pot/3, improved from pot/2)")
                 result
             }
         }
         
-        return threshold
+        return kotlin.math.max(1, threshold) // Ensure minimum threshold of 1
     }
     
     fun getOpenRaiseSize(position: Position, smallBlind: Int): Int {

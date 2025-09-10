@@ -1,7 +1,15 @@
 # The Real Donkey Killers - Dynamic World Championship Poker Strategy
 
 ## Overview
-Our poker bot "Real Donkey Killer v3.0" implements a revolutionary dynamic strategy system that adapts in real-time to maximize win rate and minimize losses. This version represents a breakthrough in AI poker strategy, featuring adaptive decision-making, advanced opponent profiling, and sophisticated meta-game awareness.
+Our poker bot "Real Donkey Killer v3.1" implements a revolutionary dynamic strategy system that adapts in real-time to maximize win rate and minimize losses. This version represents a breakthrough in AI poker strategy, featuring adaptive decision-making, advanced opponent profiling, and sophisticated meta-game awareness.
+
+## Version 3.1 Improvements (Log Analysis Based)
+- **Fixed Logging Accuracy**: Checks are now properly logged as "CHECK" instead of "FOLD", improving decision analysis
+- **Enhanced Preflop Aggressor Tracking**: Fixed tracking logic that was never activating, crucial for postflop strategy
+- **Improved Aggressor Detection**: More reliable identification of last raiser for accurate opponent modeling  
+- **Accurate Active Player Count**: Now counts only players still in hand, not just those with chips
+- **Optimized Call Thresholds**: Improved late/blind position defense from pot/2 to pot/3 for better EV against small opens
+- **Enhanced Log Structure**: Added decision IDs to prevent log interleaving and improve hand analysis
 
 ## Revolutionary Dynamic Features
 

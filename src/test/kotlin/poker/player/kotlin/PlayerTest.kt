@@ -284,7 +284,7 @@ class PlayerTest {
         val version = player.version()
         
         // Version should contain the base name and a valid strategy mode
-        assertTrue(version.startsWith("Real Donkey Killer v3.0 - Dynamic World Champion"))
+        assertTrue(version.startsWith("Real Donkey Killer v3.1 - Dynamic World Champion"))
         assertTrue(version.contains("(") && version.contains(")"))
         
         // Verify it contains a valid strategy mode
