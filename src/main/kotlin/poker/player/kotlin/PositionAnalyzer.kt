@@ -41,8 +41,8 @@ class PositionAnalyzer {
         
         val threshold = when (position) {
             Position.EARLY -> {
-                val result = pot / 4  // Conservative for early position
-                println("      EARLY position threshold: $result (pot/4)")
+                val result = pot / 5  // More conservative for early position
+                println("      EARLY position threshold: $result (pot/5)")
                 result
             }
             Position.MIDDLE -> {
