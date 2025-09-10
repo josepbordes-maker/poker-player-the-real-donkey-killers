@@ -28,7 +28,7 @@ class BettingStrategyTest {
         val currentBuyIn = 150
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = myStack,
+            communityCards = JSONArray(),            myStack = myStack,
             myBet = myBet,
             currentBuyIn = currentBuyIn,
             pot = 200,
@@ -45,7 +45,7 @@ class BettingStrategyTest {
         val myCards = cards("A" to "spades", "A" to "hearts") // Pocket aces
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
             pot = 0,
@@ -62,7 +62,7 @@ class BettingStrategyTest {
         val myCards = cards("2" to "spades", "7" to "hearts") // Weak hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
             pot = 0,
@@ -79,7 +79,7 @@ class BettingStrategyTest {
         val myCards = cards("Q" to "spades", "J" to "hearts") // Decent hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
             pot = 0,
@@ -96,7 +96,7 @@ class BettingStrategyTest {
         val myCards = cards("K" to "spades", "K" to "hearts") // Pocket kings
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 50, // Facing a bet
             pot = 100,
@@ -113,7 +113,7 @@ class BettingStrategyTest {
         val myCards = cards("10" to "spades", "10" to "hearts") // Pocket tens - strong hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 20, // Small bet
             pot = 100,
@@ -130,7 +130,7 @@ class BettingStrategyTest {
         val myCards = cards("8" to "spades", "9" to "spades") // Suited connectors
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 15, // Very small bet (1.5x small blind)
             pot = 100,
@@ -147,7 +147,7 @@ class BettingStrategyTest {
         val myCards = cards("2" to "spades", "5" to "hearts") // Truly weak hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 20, // 2x small blind
             pot = 100,
@@ -164,7 +164,7 @@ class BettingStrategyTest {
         val myCards = cards("2" to "spades", "5" to "hearts") // Very weak hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = 80, // Large bet
             pot = 100,
@@ -182,7 +182,7 @@ class BettingStrategyTest {
         val smallStack = 30
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = smallStack,
+            communityCards = JSONArray(),            myStack = smallStack,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
             pot = 0,
@@ -203,7 +203,7 @@ class BettingStrategyTest {
         // Early position - stricter threshold (pot/4 = 25)
         val earlyBet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
             pot = pot,
@@ -215,7 +215,7 @@ class BettingStrategyTest {
         // Late position - more lenient threshold (pot/2 = 50)
         val lateBet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = 1000,
+            communityCards = JSONArray(),            myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
             pot = pot,
@@ -237,7 +237,7 @@ class BettingStrategyTest {
         
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
-            myStack = myStack,
+            communityCards = JSONArray(),            myStack = myStack,
             myBet = myBet,
             currentBuyIn = currentBuyIn,
             pot = 50,
@@ -258,6 +258,7 @@ class BettingStrategyTest {
         
         val strongBet = bettingStrategy.calculateBet(
             myCards = strongHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
@@ -269,6 +270,7 @@ class BettingStrategyTest {
         
         val decentBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 0, // No bet to call
@@ -288,6 +290,7 @@ class BettingStrategyTest {
         
         val blindsBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 0,
@@ -299,6 +302,7 @@ class BettingStrategyTest {
         
         val lateBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 0,
@@ -326,6 +330,7 @@ class BettingStrategyTest {
         strongHands.forEach { hand ->
             val bet = bettingStrategy.calculateBet(
                 myCards = hand,
+            communityCards = JSONArray(),
                 myStack = 1000,
                 myBet = 0,
                 currentBuyIn = 30, // Facing a bet
@@ -346,6 +351,7 @@ class BettingStrategyTest {
         
         val bet = bettingStrategy.calculateBet(
             myCards = strongHand,
+            communityCards = JSONArray(),
             myStack = smallStack,
             myBet = 0,
             currentBuyIn = 20, // Facing a bet
@@ -370,6 +376,7 @@ class BettingStrategyTest {
         
         val trashBet = bettingStrategy.calculateBet(
             myCards = trashHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = smallBet,
@@ -381,6 +388,7 @@ class BettingStrategyTest {
         
         val playableBet = bettingStrategy.calculateBet(
             myCards = playableHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = smallBet,
@@ -400,6 +408,7 @@ class BettingStrategyTest {
         
         val smallBet = bettingStrategy.calculateBet(
             myCards = playableHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 20, // Exactly 2x small blind
@@ -411,6 +420,7 @@ class BettingStrategyTest {
         
         val largeBet = bettingStrategy.calculateBet(
             myCards = playableHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = 25, // More than 2x small blind
@@ -435,6 +445,7 @@ class BettingStrategyTest {
         // Early: pot/4 = 30, so exactly at threshold
         val earlyBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -447,6 +458,7 @@ class BettingStrategyTest {
         // Middle: pot/3 = 40, so under threshold
         val middleBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -459,6 +471,7 @@ class BettingStrategyTest {
         // Late: pot/2 = 60, so well under threshold
         val lateBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -481,6 +494,7 @@ class BettingStrategyTest {
         
         val blindsBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -492,6 +506,7 @@ class BettingStrategyTest {
         
         val lateBet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -514,6 +529,7 @@ class BettingStrategyTest {
         
         val bet = bettingStrategy.calculateBet(
             myCards = decentHand,
+            communityCards = JSONArray(),
             myStack = stack,
             myBet = 0,
             currentBuyIn = callAmount,
@@ -534,6 +550,7 @@ class BettingStrategyTest {
         
         val bet = bettingStrategy.calculateBet(
             myCards = strongHand,
+            communityCards = JSONArray(),
             myStack = 1000,
             myBet = myBet,
             currentBuyIn = currentBuyIn,
@@ -560,6 +577,7 @@ class BettingStrategyTest {
         ).forEach { position ->
             val bet = bettingStrategy.calculateBet(
                 myCards = marginalHand,
+            communityCards = JSONArray(),
                 myStack = 1000,
                 myBet = 0,
                 currentBuyIn = largeBet,

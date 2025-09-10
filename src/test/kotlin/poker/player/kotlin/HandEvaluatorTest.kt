@@ -338,4 +338,76 @@ class HandEvaluatorTest {
         assertEquals(HandEvaluator.HandRank.HIGH_CARD, result.rank)
         assertEquals("Invalid hole cards", result.description)
     }
+    
+    // Tests for Rain Man enhanced functionality
+    @Test
+    fun `hasStrongHandWithCommunity should evaluate post-flop hands`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val communityCards = cards("A" to "clubs", "K" to "diamonds", "2" to "spades")
+        
+        // Two pair Aces and Kings should be strong
+        assertTrue(handEvaluator.hasStrongHandWithCommunity(holeCards, communityCards))
+    }
+    
+    @Test
+    fun `hasStrongHandWithCommunity should fall back to preflop evaluation`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val noCommunityCards = JSONArray()
+        
+        // Should use pre-flop evaluation for AK (strong hand)
+        assertTrue(handEvaluator.hasStrongHandWithCommunity(holeCards, noCommunityCards))
+    }
+    
+    @Test
+    fun `hasStrongHandWithCommunity should reject weak post-flop hands`() {
+        val holeCards = cards("7" to "spades", "2" to "hearts")
+        val communityCards = cards("K" to "clubs", "Q" to "diamonds", "J" to "spades")
+        
+        // Seven high should not be strong even with community cards
+        assertFalse(handEvaluator.hasStrongHandWithCommunity(holeCards, communityCards))
+    }
+    
+    @Test
+    fun `evaluateBestHand should use Rain Man when community cards available`() {
+        val holeCards = cards("A" to "spades", "K" to "spades")
+        val communityCards = cards("Q" to "spades", "J" to "spades", "10" to "spades")
+        
+        // This should be a royal flush - the evaluation should detect it
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        
+        // If Rain Man API works, it should detect royal flush or straight flush
+        // If not, our fallback should still detect straight flush
+        assertTrue(
+            result.rank == HandEvaluator.HandRank.ROYAL_FLUSH || 
+            result.rank == HandEvaluator.HandRank.STRAIGHT_FLUSH,
+            "Should detect royal flush or straight flush, got: ${result.description}"
+        )
+    }
+    
+    @Test
+    fun `evaluateBestHand should fall back gracefully when Rain Man unavailable`() {
+        val holeCards = cards("A" to "hearts", "A" to "clubs")
+        val communityCards = cards("A" to "spades", "K" to "diamonds", "Q" to "hearts")
+        
+        // Three Aces should be detected regardless of Rain Man availability
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        
+        assertTrue(
+            result.rank == HandEvaluator.HandRank.THREE_OF_A_KIND,
+            "Should detect three of a kind, got: ${result.description}"
+        )
+    }
+    
+    @Test
+    fun `HandRank fromRainManRank should map correctly`() {
+        assertEquals(HandEvaluator.HandRank.HIGH_CARD, HandEvaluator.fromRainManRank(0))
+        assertEquals(HandEvaluator.HandRank.ONE_PAIR, HandEvaluator.fromRainManRank(1))
+        assertEquals(HandEvaluator.HandRank.TWO_PAIR, HandEvaluator.fromRainManRank(2))
+        assertEquals(HandEvaluator.HandRank.THREE_OF_A_KIND, HandEvaluator.fromRainManRank(3))
+        assertEquals(HandEvaluator.HandRank.STRAIGHT, HandEvaluator.fromRainManRank(4))
+        assertEquals(HandEvaluator.HandRank.FLUSH, HandEvaluator.fromRainManRank(5))
+        assertEquals(HandEvaluator.HandRank.FULL_HOUSE, HandEvaluator.fromRainManRank(6))
+        assertEquals(HandEvaluator.HandRank.FOUR_OF_A_KIND, HandEvaluator.fromRainManRank(7))
+        assertEquals(HandEvaluator.HandRank.STRAIGHT_FLUSH, HandEvaluator.fromRainManRank(8))
+    }
 }

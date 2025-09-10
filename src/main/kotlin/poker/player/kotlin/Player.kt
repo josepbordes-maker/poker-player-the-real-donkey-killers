@@ -39,6 +39,7 @@ class Player {
         // Use betting strategy to calculate bet
         return bettingStrategy.calculateBet(
             myCards = myCards,
+            communityCards = community,
             myStack = myStack,
             myBet = myBet,
             currentBuyIn = currentBuyIn,
@@ -54,6 +55,6 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v1.2 ($mode)"
+        return "Real Donkey Killer v1.2 - Rain Man Enhanced ($mode)"
     }
 }

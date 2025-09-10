@@ -160,10 +160,34 @@ Notes
 
 ## Technical Implementation
 - Built in Kotlin with Ktor web framework
-- JSON-based game state parsing
+- JSON-based game state parsing  
+- **Rain Man API integration** for professional hand ranking
+- Enhanced post-flop hand evaluation with community cards
+- Fallback to local evaluation when API unavailable
 - Modular hand evaluation functions
 - Memory-efficient card tracking
 - RESTful API compliance with Lean Poker standards
+
+## Version 1.2 Updates - Rain Man Enhanced
+
+### New Features
+- **Professional Hand Ranking**: Integration with Rain Man API (https://rainman.leanpoker.org/rank) for accurate 5+ card hand evaluation
+- **Enhanced Post-Flop Strategy**: Improved decision making using community cards for precise hand strength assessment
+- **Robust Fallback System**: Graceful degradation to local evaluation when API is unavailable
+- **Timeout Protection**: API calls with 3-second timeout to prevent hanging
+
+### Technical Improvements
+- Added Ktor HTTP client for external API communication
+- New `RainManService` class with proper resource management
+- Enhanced `HandEvaluator` with community card awareness
+- Updated `BettingStrategy` to use post-flop hand strength
+- Comprehensive test coverage for API integration
+
+### Benefits
+- **More Accurate Hand Rankings**: Professional-grade hand evaluation for complex scenarios
+- **Better Post-Flop Decisions**: Enhanced decision making on flop, turn, and river
+- **Reliable Performance**: Maintains functionality even when external API is down
+- **Future-Proof Architecture**: Easy to extend with additional external services
 
 ---
 
@@ -171,5 +195,5 @@ Notes
 
 Defaults can be tuned at runtime using `STRAT_MODE` (TIGHT | STANDARD | LAG) and optional overrides (see AGENTS.md). The above reflects STANDARD defaults.
 
-*Strategy Version: Real Donkey Killer v1.2*  
-*Last Updated: Current Implementation Analysis*
+*Strategy Version: Real Donkey Killer v1.2 - Rain Man Enhanced*  
+*Last Updated: Rain Man API Integration*

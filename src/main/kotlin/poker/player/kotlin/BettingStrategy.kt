@@ -13,6 +13,7 @@ class BettingStrategy(
 
     fun calculateBet(
         myCards: JSONArray,
+        communityCards: JSONArray,
         myStack: Int,
         myBet: Int,
         currentBuyIn: Int,
@@ -31,7 +32,7 @@ class BettingStrategy(
         
         // If no bet to call, open-raise based on position
         if (callAmount <= 0) {
-            return calculateOpenRaise(myCards, myStack, smallBlind, position)
+            return calculateOpenRaise(myCards, communityCards, myStack, smallBlind, position)
         }
         
         // Position-aware continuations when facing a bet
@@ -43,7 +44,9 @@ class BettingStrategy(
         val isRiskMood = random.nextFloat() < StrategyConfig.riskMoodProbability
         
         return when {
-            handEvaluator.hasStrongHand(myCards) -> min(myStack, callAmount + minimumRaise * 2)
+            // Use enhanced evaluation with community cards when available
+            handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> 
+                min(myStack, callAmount + minimumRaise * 2)
             handEvaluator.hasDecentHand(myCards) && callAmount <= smallBetThreshold -> callAmount
             handEvaluator.hasWeakButPlayableHand(myCards) && callAmount <= smallBlind * 2 -> callAmount
             // Remove unconditional small-bet calls; require at least a playable hand
@@ -57,33 +60,35 @@ class BettingStrategy(
     
     private fun calculateOpenRaise(
         myCards: JSONArray,
+        communityCards: JSONArray,
         myStack: Int,
         smallBlind: Int,
         position: PositionAnalyzer.Position
     ): Int {
         return when (position) {
             PositionAnalyzer.Position.EARLY -> when {
-                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> 
+                    min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
                 else -> 0
             }
             PositionAnalyzer.Position.MIDDLE -> when {
-                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
-                handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> 
+                    min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasDecentHand(myCards) -> 
+                    min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
                 else -> 0
             }
-            PositionAnalyzer.Position.LATE -> {
-                when {
-                    handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
-                    handEvaluator.hasDecentHand(myCards) -> min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
-                    // In LAG mode, allow opening weak-but-playable hands from late position
-                    StrategyConfig.allowLateOpenWithWeakPlayable && handEvaluator.hasWeakButPlayableHand(myCards) ->
-                        min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
-                    else -> 0
-                }
+            PositionAnalyzer.Position.LATE -> when {
+                handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> 
+                    min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasDecentHand(myCards) -> 
+                    min(myStack, positionAnalyzer.getOpenRaiseSize(position, smallBlind))
+                else -> 0
             }
             PositionAnalyzer.Position.BLINDS -> when {
                 // More defensive from blinds: raise only strong hands
-                handEvaluator.hasStrongHand(myCards) -> min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
+                handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> 
+                    min(myStack, positionAnalyzer.getStrongHandRaiseSize(smallBlind))
                 else -> 0
             }
         }

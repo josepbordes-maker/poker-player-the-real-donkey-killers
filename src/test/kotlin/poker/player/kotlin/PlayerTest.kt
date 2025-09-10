@@ -275,7 +275,7 @@ class PlayerTest {
     fun `version reflects strategy improvements`() {
         val player = Player()
         val version = player.version()
-        assertEquals("Real Donkey Killer v1.2 (STANDARD)", version)
+        assertEquals("Real Donkey Killer v1.2 - Rain Man Enhanced (STANDARD)", version)
     }
     
     @Test

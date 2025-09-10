@@ -28,6 +28,7 @@ class StrategyConfigTest {
             val myCards = cards("J" to "clubs", "9" to "clubs") // weak but playable (suited gap 1)
             val bet = bettingStrategy.calculateBet(
                 myCards = myCards,
+                communityCards = JSONArray(),
                 myStack = 1000,
                 myBet = 0,
                 currentBuyIn = 0,

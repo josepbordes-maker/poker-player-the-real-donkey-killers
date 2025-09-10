@@ -5,29 +5,52 @@ import org.json.JSONObject
 import kotlin.math.abs
 
 class HandEvaluator {
+    private val rainManService = RainManService()
     
     // Poker hand rankings from highest to lowest
-    enum class HandRank(val value: Int) {
-        ROYAL_FLUSH(10),
-        STRAIGHT_FLUSH(9),
-        FOUR_OF_A_KIND(8),
-        FULL_HOUSE(7),
-        FLUSH(6),
-        STRAIGHT(5),
-        THREE_OF_A_KIND(4),
-        TWO_PAIR(3),
-        ONE_PAIR(2),
-        HIGH_CARD(1)
+    // Updated to match Rain Man API ranking system (0-8)
+    enum class HandRank(val value: Int, val rainManRank: Int) {
+        HIGH_CARD(1, 0),
+        ONE_PAIR(2, 1),
+        TWO_PAIR(3, 2),
+        THREE_OF_A_KIND(4, 3),
+        STRAIGHT(5, 4),
+        FLUSH(6, 5),
+        FULL_HOUSE(7, 6),
+        FOUR_OF_A_KIND(8, 7),
+        STRAIGHT_FLUSH(9, 8),
+        ROYAL_FLUSH(10, 8) // Royal flush is a special case of straight flush
+    }
+    
+    companion object {
+        fun fromRainManRank(rainManRank: Int): HandRank {
+            return when (rainManRank) {
+                0 -> HandRank.HIGH_CARD
+                1 -> HandRank.ONE_PAIR
+                2 -> HandRank.TWO_PAIR
+                3 -> HandRank.THREE_OF_A_KIND
+                4 -> HandRank.STRAIGHT
+                5 -> HandRank.FLUSH
+                6 -> HandRank.FULL_HOUSE
+                7 -> HandRank.FOUR_OF_A_KIND
+                8 -> HandRank.STRAIGHT_FLUSH // Rain Man doesn't distinguish royal flush
+                else -> HandRank.HIGH_CARD
+            }
+        }
     }
     
     data class HandStrength(
         val rank: HandRank,
         val description: String,
-        val kickerValues: List<Int> = emptyList()
+        val kickerValues: List<Int> = emptyList(),
+        val value: Int = 0,
+        val secondValue: Int = 0,
+        val rainManData: RainManService.RainManResponse? = null
     )
     
     /**
      * Evaluates the best 5-card hand from hole cards + community cards
+     * Uses Rain Man API for accurate ranking when possible, falls back to local evaluation
      */
     fun evaluateBestHand(holeCards: JSONArray, communityCards: JSONArray): HandStrength {
         if (holeCards.length() != 2) {
@@ -48,7 +71,8 @@ class HandEvaluator {
             return evaluateHoleCards(holeCards)
         }
         
-        return findBestFiveCardHand(allCards)
+        // Try Rain Man API first for 5+ cards
+        return evaluateWithRainMan(allCards) ?: findBestFiveCardHand(allCards)
     }
     
     private fun evaluateHoleCards(holeCards: JSONArray): HandStrength {
@@ -83,6 +107,76 @@ class HandEvaluator {
         }
     }
     
+    /**
+     * Use Rain Man API to evaluate hand if possible
+     */
+    private fun evaluateWithRainMan(allCards: List<JSONObject>): HandStrength? {
+        if (allCards.size < 5) return null
+        
+        // Convert to JSONArray for Rain Man API
+        val cardsArray = JSONArray()
+        allCards.forEach { cardsArray.put(it) }
+        
+        val rainManResult = rainManService.rankHand(cardsArray)
+        
+        return rainManResult?.let { result ->
+            var handRank = fromRainManRank(result.rank)
+            
+            // Post-process: Rain Man doesn't distinguish royal flush from straight flush
+            // If we get a straight flush, check if it's actually a royal flush
+            if (handRank == HandRank.STRAIGHT_FLUSH && result.value == 14) {
+                // A-high straight flush is a royal flush
+                val ranks = allCards.map { CardUtils.getRankValue(it.getString("rank")) }
+                if (ranks.contains(14) && ranks.contains(13) && ranks.contains(12) && 
+                    ranks.contains(11) && ranks.contains(10)) {
+                    handRank = HandRank.ROYAL_FLUSH
+                }
+            }
+            
+            val description = getHandDescription(handRank, result.value, result.secondValue)
+            
+            HandStrength(
+                rank = handRank,
+                description = description,
+                kickerValues = result.kickers,
+                value = result.value,
+                secondValue = result.secondValue,
+                rainManData = result
+            )
+        }
+    }
+    
+    /**
+     * Generate description based on Rain Man data
+     */
+    private fun getHandDescription(rank: HandRank, value: Int, secondValue: Int): String {
+        return when (rank) {
+            HandRank.ROYAL_FLUSH -> "Royal Flush"
+            HandRank.STRAIGHT_FLUSH -> "Straight Flush"
+            HandRank.FOUR_OF_A_KIND -> "Four of a Kind"
+            HandRank.FULL_HOUSE -> "Full House"
+            HandRank.FLUSH -> "Flush"
+            HandRank.STRAIGHT -> "Straight"
+            HandRank.THREE_OF_A_KIND -> "Three of a Kind"
+            HandRank.TWO_PAIR -> "Two Pair"
+            HandRank.ONE_PAIR -> "One Pair"
+            HandRank.HIGH_CARD -> "High Card"
+        }
+    }
+    
+    /**
+     * Convert numeric rank to name
+     */
+    private fun getRankName(value: Int): String {
+        return when (value) {
+            14 -> "Ace"
+            13 -> "King"
+            12 -> "Queen"
+            11 -> "Jack"
+            else -> value.toString()
+        }
+    }
+    
     private fun findBestFiveCardHand(allCards: List<JSONObject>): HandStrength {
         // For simplicity, we'll implement basic hand detection
         // In a full implementation, you'd generate all 5-card combinations
@@ -98,26 +192,27 @@ class HandEvaluator {
         // Check for straight
         val isStraight = checkStraight(ranks.distinct())
         
-        // Determine best hand
+        // Determine best hand (fallback logic when Rain Man API unavailable)
         return when {
-            isFlush && isStraight && ranks.contains(14) && ranks.contains(13) -> 
-                HandStrength(HandRank.ROYAL_FLUSH, "Royal Flush")
+            isFlush && isStraight && ranks.contains(14) && ranks.contains(13) && 
+            ranks.contains(12) && ranks.contains(11) && ranks.contains(10) -> 
+                HandStrength(HandRank.ROYAL_FLUSH, "Royal Flush", ranks.take(5))
             isFlush && isStraight -> 
-                HandStrength(HandRank.STRAIGHT_FLUSH, "Straight Flush")
+                HandStrength(HandRank.STRAIGHT_FLUSH, "Straight Flush", ranks.take(5))
             rankCounts.containsValue(4) -> 
-                HandStrength(HandRank.FOUR_OF_A_KIND, "Four of a Kind")
+                HandStrength(HandRank.FOUR_OF_A_KIND, "Four of a Kind", ranks.take(5))
             rankCounts.containsValue(3) && rankCounts.containsValue(2) -> 
-                HandStrength(HandRank.FULL_HOUSE, "Full House")
+                HandStrength(HandRank.FULL_HOUSE, "Full House", ranks.take(5))
             isFlush -> 
-                HandStrength(HandRank.FLUSH, "Flush")
+                HandStrength(HandRank.FLUSH, "Flush", ranks.take(5))
             isStraight -> 
-                HandStrength(HandRank.STRAIGHT, "Straight")
+                HandStrength(HandRank.STRAIGHT, "Straight", ranks.take(5))
             rankCounts.containsValue(3) -> 
-                HandStrength(HandRank.THREE_OF_A_KIND, "Three of a Kind")
+                HandStrength(HandRank.THREE_OF_A_KIND, "Three of a Kind", ranks.take(5))
             rankCounts.values.count { it == 2 } >= 2 -> 
-                HandStrength(HandRank.TWO_PAIR, "Two Pair")
+                HandStrength(HandRank.TWO_PAIR, "Two Pair", ranks.take(5))
             rankCounts.containsValue(2) -> 
-                HandStrength(HandRank.ONE_PAIR, "One Pair")
+                HandStrength(HandRank.ONE_PAIR, "One Pair", ranks.take(5))
             else -> 
                 HandStrength(HandRank.HIGH_CARD, "High Card", ranks.take(5))
         }
@@ -217,5 +312,35 @@ class HandEvaluator {
             abs(CardUtils.getRankValue(rank1) - CardUtils.getRankValue(rank2)) <= 2 -> true // Small gap connectors
             else -> false
         }
+    }
+    
+    /**
+     * Enhanced version that takes community cards for more accurate evaluation
+     */
+    fun hasStrongHandWithCommunity(holeCards: JSONArray, communityCards: JSONArray): Boolean {
+        if (holeCards.length() != 2) return false
+        
+        // If we have community cards, use full hand evaluation
+        if (communityCards.length() >= 3) {
+            val handStrength = evaluateBestHand(holeCards, communityCards)
+            // Strong hands are pairs or better with Rain Man analysis
+            return when (handStrength.rank) {
+                HandRank.ONE_PAIR -> handStrength.value >= 10 // Pair of tens or better
+                HandRank.TWO_PAIR, HandRank.THREE_OF_A_KIND, HandRank.STRAIGHT,
+                HandRank.FLUSH, HandRank.FULL_HOUSE, HandRank.FOUR_OF_A_KIND,
+                HandRank.STRAIGHT_FLUSH, HandRank.ROYAL_FLUSH -> true
+                else -> false
+            }
+        }
+        
+        // Fall back to pre-flop evaluation
+        return hasStrongHand(holeCards)
+    }
+    
+    /**
+     * Close resources when done
+     */
+    fun close() {
+        rainManService.close()
     }
 }
