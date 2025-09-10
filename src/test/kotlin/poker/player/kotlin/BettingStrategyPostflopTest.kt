@@ -41,7 +41,7 @@ class BettingStrategyPostflopTest {
         )
 
         val baseExpected = 90 * StrategyConfig.postflopSmall
-        val positionMultiplier = 1.1 // Late position multiplier
+        val positionMultiplier = 1.2 // Late position multiplier
         val expected = kotlin.math.round(baseExpected * positionMultiplier).toInt()
         // Allow off-by-one due to rounding and integer math
         val ok = bet == expected || bet == expected - 1 || bet == expected + 1
