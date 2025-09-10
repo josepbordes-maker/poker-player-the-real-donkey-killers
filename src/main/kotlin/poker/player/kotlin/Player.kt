@@ -11,6 +11,7 @@ class Player {
     private val bettingStrategy = BettingStrategy(handEvaluator, positionAnalyzer)
     private val enhancedBettingStrategy = EnhancedBettingStrategy(handEvaluator, positionAnalyzer, opponentModeling)
     private val postFlopStrategy = PostFlopStrategy(handEvaluator, positionAnalyzer, opponentModeling)
+    private val dynamicStrategyManager = DynamicStrategyManager(handEvaluator, positionAnalyzer, opponentModeling)
     
     // Track game state for enhanced decision making
     private var lastAction: String = ""
@@ -91,41 +92,25 @@ class Player {
         println("Aggressor: ${aggressorId ?: "None"}, Opponent Count: $opponentCount")
         println("Was Pre-flop Aggressor: $wasPreFlopAggressor")
         
-        val betAmount = if (isPostFlop) {
-            println("Using POST-FLOP strategy...")
-            // Use advanced post-flop strategy
-            postFlopStrategy.calculatePostFlopBet(
-                myCards = myCards,
-                communityCards = community,
-                myStack = myStack,
-                myBet = myBet,
-                currentBuyIn = currentBuyIn,
-                pot = pot,
-                smallBlind = smallBlind,
-                minimumRaise = minimumRaise,
-                position = position,
-                wasPreFlopAggressor = wasPreFlopAggressor,
-                opponentCount = opponentCount,
-                aggressorId = aggressorId
-            )
-        } else {
-            println("Using ENHANCED PRE-FLOP strategy...")
-            // Use enhanced pre-flop strategy with opponent modeling
-            enhancedBettingStrategy.calculateBet(
-                myCards = myCards,
-                communityCards = community,
-                myStack = myStack,
-                myBet = myBet,
-                currentBuyIn = currentBuyIn,
-                pot = pot,
-                smallBlind = smallBlind,
-                minimumRaise = minimumRaise,
-                position = position,
-                players = players,
-                inAction = inAction,
-                aggressorId = aggressorId
-            )
-        }
+        println("Using DYNAMIC WORLD CHAMPION strategy...")
+        val dynamicDecision = dynamicStrategyManager.calculateOptimalBet(
+            myCards = myCards,
+            communityCards = community,
+            myStack = myStack,
+            myBet = myBet,
+            currentBuyIn = currentBuyIn,
+            pot = pot,
+            smallBlind = smallBlind,
+            minimumRaise = minimumRaise,
+            position = position,
+            players = players,
+            inAction = inAction,
+            dealer = dealer,
+            round = round,
+            aggressorId = aggressorId
+        )
+        
+        val betAmount = dynamicDecision.amount
         
         // Update our action tracking
         updateActionTracking(betAmount, currentBuyIn, myBet)
@@ -187,7 +172,7 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v2.0 - World Champion Enhanced ($mode)"
+        return "Real Donkey Killer v2.1 - Dynamic World Champion ($mode)"
     }
     
     /**
