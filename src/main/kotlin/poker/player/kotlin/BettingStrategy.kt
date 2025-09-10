@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.random.Random
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class BettingStrategy(
     private val handEvaluator: HandEvaluator,
@@ -40,12 +41,12 @@ class BettingStrategy(
                     HandEvaluator.HandRank.ROYAL_FLUSH,
                     HandEvaluator.HandRank.STRAIGHT_FLUSH,
                     HandEvaluator.HandRank.FOUR_OF_A_KIND,
-                    HandEvaluator.HandRank.FULL_HOUSE -> (basePot * 2) / 3
+                    HandEvaluator.HandRank.FULL_HOUSE -> (basePot * StrategyConfig.postflopBig).roundToInt()
                     HandEvaluator.HandRank.FLUSH,
                     HandEvaluator.HandRank.STRAIGHT,
                     HandEvaluator.HandRank.THREE_OF_A_KIND,
-                    HandEvaluator.HandRank.TWO_PAIR -> basePot / 2
-                    HandEvaluator.HandRank.ONE_PAIR -> basePot / 3
+                    HandEvaluator.HandRank.TWO_PAIR -> (basePot * StrategyConfig.postflopMed).roundToInt()
+                    HandEvaluator.HandRank.ONE_PAIR -> (basePot * StrategyConfig.postflopSmall).roundToInt()
                     HandEvaluator.HandRank.HIGH_CARD -> 0
                 }
                 return min(myStack, maxOf(0, betSize))

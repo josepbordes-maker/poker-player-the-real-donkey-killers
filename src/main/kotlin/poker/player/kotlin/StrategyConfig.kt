@@ -19,7 +19,10 @@ object StrategyConfig {
         val riskFreq: String? = null,
         val smallBetMult: String? = null,
         val bluffRaise: String? = null,
-        val rainMan: String? = null
+        val rainMan: String? = null,
+        val postSmall: String? = null,
+        val postMed: String? = null,
+        val postBig: String? = null
     )
 
     private val fileConfig: FileConfig by lazy {
@@ -33,7 +36,10 @@ object StrategyConfig {
                 riskFreq = json.opt("riskFreq")?.toString(),
                 smallBetMult = json.opt("smallBetMult")?.toString(),
                 bluffRaise = json.opt("bluffRaise")?.toString(),
-                rainMan = json.opt("rainMan")?.toString()
+                rainMan = json.opt("rainMan")?.toString(),
+                postSmall = json.opt("postflopSmall")?.toString(),
+                postMed = json.opt("postflopMed")?.toString(),
+                postBig = json.opt("postflopBig")?.toString()
             )
         } catch (_: Exception) {
             FileConfig()
@@ -83,5 +89,24 @@ object StrategyConfig {
         get() = when (envOrProp("STRAT_RAINMAN", fileConfig.rainMan)?.trim()?.lowercase()) {
             "0", "false", "off", "no" -> false
             else -> true
+        }
+
+    // Post-flop c-bet/value bet fractions (defaults: 0.33, 0.5, 0.66)
+    val postflopSmall: Double
+        get() {
+            val override = envOrProp("STRAT_POSTFLOP_SMALL", fileConfig.postSmall)?.toDoubleOrNull()
+            return (override ?: 0.33).coerceIn(0.05, 1.0)
+        }
+
+    val postflopMed: Double
+        get() {
+            val override = envOrProp("STRAT_POSTFLOP_MED", fileConfig.postMed)?.toDoubleOrNull()
+            return (override ?: 0.5).coerceIn(0.05, 1.0)
+        }
+
+    val postflopBig: Double
+        get() {
+            val override = envOrProp("STRAT_POSTFLOP_BIG", fileConfig.postBig)?.toDoubleOrNull()
+            return (override ?: 0.66).coerceIn(0.05, 1.0)
         }
 }

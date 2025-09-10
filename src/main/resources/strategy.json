@@ -2,6 +2,9 @@
   "mode": "LAG",
   "riskFreq": null,
   "smallBetMult": null,
-  "bluffRaise": null
+  "bluffRaise": null,
+  "rainMan": null,
+  "postflopSmall": null,
+  "postflopMed": null,
+  "postflopBig": null
 }
-
