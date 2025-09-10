@@ -58,7 +58,7 @@ class EnhancedBettingStrategy(
         
         return calculateDefensiveStrategy(
             myCards, communityCards, myStack, callAmount, pot, smallBlind,
-            minimumRaise, position, adjustment, stackStrategy
+            minimumRaise, position, players, adjustment, stackStrategy
         )
     }
     
@@ -137,9 +137,44 @@ class EnhancedBettingStrategy(
         smallBlind: Int,
         minimumRaise: Int,
         position: PositionAnalyzer.Position,
+        players: JSONArray,
         adjustment: OpponentModeling.StrategicAdjustment,
         stackStrategy: OpponentModeling.StackStrategy
     ): Int {
+        // Pre-flop quick counters: anti-limp punish and squeeze plays
+        if (communityCards.length() == 0) {
+            val bigBlind = smallBlind * 2
+            val currentBuyIn = callAmount // since myBet is zero in many tests, we approximate
+            // Count players who have matched the current buy-in
+            var atBuyIn = 0
+            for (i in 0 until players.length()) {
+                val p = players.getJSONObject(i)
+                if (p.optInt("bet", 0) == currentBuyIn) atBuyIn++
+            }
+            val isRaisePreflop = currentBuyIn > bigBlind
+            val hasCallers = atBuyIn >= 2
+
+            // Anti-limp punish: limped pot (no raise), late position, decent+ hand
+            if (!isRaisePreflop && hasCallers && position == PositionAnalyzer.Position.LATE) {
+                val handStrength = getHandStrength(myCards, communityCards)
+                if (handStrength >= HandStrength.DECENT) {
+                    val limpers = atBuyIn - 1 // exclude big blind
+                    val isoSize = smallBlind * (4 + max(0, limpers))
+                    return min(myStack, isoSize)
+                }
+            }
+
+            // Squeeze play: raised pot with at least one caller
+            if (isRaisePreflop && hasCallers && (position == PositionAnalyzer.Position.LATE || position == PositionAnalyzer.Position.BLINDS)) {
+                val handStrength = getHandStrength(myCards, communityCards)
+                if (handStrength >= HandStrength.STRONG) {
+                    val callers = atBuyIn - 1 // exclude raiser
+                    val target = callAmount + minimumRaise * (2 + max(0, callers))
+                    return min(myStack, target)
+                }
+            }
+        }
+
         val handStrength = getHandStrength(myCards, communityCards)
         val potOdds = pot.toDouble() / (pot + callAmount)
         val adjustedCallThreshold = adjustment.callThreshold

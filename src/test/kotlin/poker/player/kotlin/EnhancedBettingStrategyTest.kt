@@ -32,6 +32,65 @@ class EnhancedBettingStrategyTest {
         }
         return array
     }
+
+    @Test
+    fun `late position isolates limpers with wider range`() {
+        val sb = 10
+        val bb = 20
+        val myCards = cards("Q" to "spades", "J" to "hearts") // Decent hand
+        val ps = players(5)
+        // Simulate one limper and the big blind posted
+        ps.getJSONObject(1).put("bet", bb) // limper
+        ps.getJSONObject(2).put("bet", 0)
+        ps.getJSONObject(3).put("bet", 0)
+        ps.getJSONObject(4).put("bet", bb) // big blind
+
+        val bet = enhancedStrategy.calculateBet(
+            myCards = myCards,
+            communityCards = JSONArray(),
+            myStack = 1000,
+            myBet = 0,
+            currentBuyIn = bb,
+            pot = bb, // minimal pot
+            smallBlind = sb,
+            minimumRaise = 20,
+            position = PositionAnalyzer.Position.LATE,
+            players = ps,
+            inAction = 0
+        )
+
+        // Expect iso-raise: 4x SB + 1x per limper = 40 + 10 = 50
+        assertEquals(50, bet)
+    }
+
+    @Test
+    fun `squeeze over raise and caller from late`() {
+        val sb = 10
+        val bb = 20
+        val myCards = cards("Q" to "diamonds", "Q" to "clubs") // Strong hand
+        val ps = players(5)
+        // Simulate raise to 40 and one caller at 40
+        ps.getJSONObject(1).put("bet", 40) // raiser
+        ps.getJSONObject(2).put("bet", 40) // caller
+        ps.getJSONObject(4).put("bet", bb) // big blind
+
+        val bet = enhancedStrategy.calculateBet(
+            myCards = myCards,
+            communityCards = JSONArray(),
+            myStack = 1000,
+            myBet = 0,
+            currentBuyIn = 40,
+            pot = 100,
+            smallBlind = sb,
+            minimumRaise = 20,
+            position = PositionAnalyzer.Position.LATE,
+            players = ps,
+            inAction = 0
+        )
+
+        // Squeeze: call (40) + minRaise * (2 + callers(1)) = 40 + 60 = 100
+        assertEquals(100, bet)
+    }
     
     @Test
     fun `should adjust strategy against tight aggressive players`() {
