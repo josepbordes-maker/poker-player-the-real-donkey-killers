@@ -275,9 +275,7 @@ class PlayerTest {
     fun `version reflects strategy improvements`() {
         val player = Player()
         val version = player.version()
-        // Mode can vary if other tests tweak STRAT_MODE; assert stable parts
-        kotlin.test.assertTrue(version.startsWith("Real Donkey Killer v1.2"))
-        kotlin.test.assertTrue(version.contains("Rain Man Enhanced"))
+        assertEquals("Real Donkey Killer v2.0 - World Champion Enhanced (STANDARD)", version)
     }
     
     @Test
