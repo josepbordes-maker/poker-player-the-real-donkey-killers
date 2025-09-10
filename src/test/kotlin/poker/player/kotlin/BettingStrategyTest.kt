@@ -433,8 +433,8 @@ class BettingStrategyTest {
             position = PositionAnalyzer.Position.MIDDLE
         )
         
-        assertEquals(20, smallBet) // Call at threshold
-        assertEquals(0, largeBet) // Fold above threshold
+        assertEquals(20, smallBet) // Call at 1.5x threshold for middle position
+        assertEquals(0, largeBet) // Fold above 1.5x threshold
     }
     
     // === POSITION-AWARE THRESHOLD TESTS ===

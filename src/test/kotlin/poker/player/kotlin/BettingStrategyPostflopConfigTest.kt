@@ -45,7 +45,8 @@ class BettingStrategyPostflopConfigTest {
             minimumRaise = 20,
             position = PositionAnalyzer.Position.LATE
         )
-        assertEquals(25, bet)
+        val expected = kotlin.math.round(100 * 0.25 * 1.1).toInt() // 100 * postflopSmall * latePositionMultiplier
+        assertEquals(expected, bet)
     }
 }
 

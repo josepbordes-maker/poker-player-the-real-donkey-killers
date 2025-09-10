@@ -212,23 +212,40 @@ class HandEvaluator(
         return when {
             isFlush && isStraight && ranks.contains(14) && ranks.contains(13) && 
             ranks.contains(12) && ranks.contains(11) && ranks.contains(10) -> 
-                HandStrength(HandRank.ROYAL_FLUSH, "Royal Flush", ranks.take(5))
-            isFlush && isStraight -> 
-                HandStrength(HandRank.STRAIGHT_FLUSH, "Straight Flush", ranks.take(5))
-            rankCounts.containsValue(4) -> 
-                HandStrength(HandRank.FOUR_OF_A_KIND, "Four of a Kind", ranks.take(5))
-            rankCounts.containsValue(3) && rankCounts.containsValue(2) -> 
-                HandStrength(HandRank.FULL_HOUSE, "Full House", ranks.take(5))
-            isFlush -> 
-                HandStrength(HandRank.FLUSH, "Flush", ranks.take(5))
-            isStraight -> 
-                HandStrength(HandRank.STRAIGHT, "Straight", ranks.take(5))
-            rankCounts.containsValue(3) -> 
-                HandStrength(HandRank.THREE_OF_A_KIND, "Three of a Kind", ranks.take(5))
-            rankCounts.values.count { it == 2 } >= 2 -> 
-                HandStrength(HandRank.TWO_PAIR, "Two Pair", ranks.take(5))
-            rankCounts.containsValue(2) -> 
-                HandStrength(HandRank.ONE_PAIR, "One Pair", ranks.take(5))
+                HandStrength(HandRank.ROYAL_FLUSH, "Royal Flush", ranks.take(5), value = 14)
+            isFlush && isStraight -> {
+                val highCard = ranks.maxOrNull() ?: 0
+                HandStrength(HandRank.STRAIGHT_FLUSH, "Straight Flush", ranks.take(5), value = highCard)
+            }
+            rankCounts.containsValue(4) -> {
+                val quadRank = rankCounts.entries.find { it.value == 4 }?.key ?: 0
+                HandStrength(HandRank.FOUR_OF_A_KIND, "Four of a Kind", ranks.take(5), value = quadRank)
+            }
+            rankCounts.containsValue(3) && rankCounts.containsValue(2) -> {
+                val tripRank = rankCounts.entries.find { it.value == 3 }?.key ?: 0
+                HandStrength(HandRank.FULL_HOUSE, "Full House", ranks.take(5), value = tripRank)
+            }
+            isFlush -> {
+                val highCard = ranks.maxOrNull() ?: 0
+                HandStrength(HandRank.FLUSH, "Flush", ranks.take(5), value = highCard)
+            }
+            isStraight -> {
+                val highCard = ranks.maxOrNull() ?: 0
+                HandStrength(HandRank.STRAIGHT, "Straight", ranks.take(5), value = highCard)
+            }
+            rankCounts.containsValue(3) -> {
+                val tripRank = rankCounts.entries.find { it.value == 3 }?.key ?: 0
+                HandStrength(HandRank.THREE_OF_A_KIND, "Three of a Kind", ranks.take(5), value = tripRank)
+            }
+            rankCounts.values.count { it == 2 } >= 2 -> {
+                val pairs = rankCounts.entries.filter { it.value == 2 }.map { it.key }.sortedDescending()
+                val topPair = pairs.firstOrNull() ?: 0
+                HandStrength(HandRank.TWO_PAIR, "Two Pair", ranks.take(5), value = topPair)
+            }
+            rankCounts.containsValue(2) -> {
+                val pairRank = rankCounts.entries.find { it.value == 2 }?.key ?: 0
+                HandStrength(HandRank.ONE_PAIR, "One Pair", ranks.take(5), value = pairRank)
+            }
             else -> 
                 HandStrength(HandRank.HIGH_CARD, "High Card", ranks.take(5))
         }
@@ -350,12 +367,14 @@ class HandEvaluator(
         
         // Tightened weak but playable definition
         return when {
-            // Suited cards with reasonable values (7+ or connected)
-            isSuited && (minOf(value1, value2) >= 7 || gap <= 1) -> true
-            // Connected cards (no gap) with decent values  
+            // Suited cards with reasonable values (7+ or connected) OR suited aces
+            isSuited && (minOf(value1, value2) >= 7 || gap <= 1 || value1 == 14 || value2 == 14) -> true
+            // Pairs (gap == 0) with decent values  
             gap == 0 && minOf(value1, value2) >= 6 -> true
+            // Connected cards (gap == 1) with decent values (6+)
+            gap == 1 && minOf(value1, value2) >= 6 -> true
             // One-gap connectors that are suited and reasonably high
-            gap == 1 && isSuited && minOf(value1, value2) >= 8 -> true
+            gap == 1 && isSuited && minOf(value1, value2) >= 7 -> true
             // Any jack or higher (but not trash like J2)
             (value1 >= 11 && value2 >= 7) || (value2 >= 11 && value1 >= 7) -> true
             // Both cards 9 or higher 

@@ -108,30 +108,36 @@ class HandEvaluatorTest {
     
     @Test
     fun `hasWeakButPlayableHand identifies suited cards`() {
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("2" to "spades", "7" to "spades")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("3" to "hearts", "9" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("4" to "clubs", "J" to "clubs")))
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("7" to "spades", "8" to "spades"))) // Suited 7+ 
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("9" to "hearts", "J" to "hearts"))) // Suited with face
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("A" to "clubs", "3" to "clubs"))) // Suited ace
+        // These should fail under tightened rules
+        assertFalse(handEvaluator.hasWeakButPlayableHand(cards("2" to "spades", "5" to "spades"))) // Too low suited
     }
     
     @Test
     fun `hasWeakButPlayableHand identifies connected cards`() {
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("6" to "spades", "7" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("8" to "clubs", "9" to "diamonds")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("5" to "spades", "6" to "hearts")))
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("6" to "spades", "6" to "hearts"))) // Connected value 6+
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("8" to "clubs", "9" to "diamonds"))) // Connected 8+
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("7" to "spades", "7" to "hearts"))) // Connected 7+ 
+        // Low connectors should fail under tightened rules
+        assertFalse(handEvaluator.hasWeakButPlayableHand(cards("4" to "spades", "5" to "hearts"))) // Too low connected
     }
     
     @Test
     fun `hasWeakButPlayableHand identifies face cards`() {
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("J" to "spades", "2" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("Q" to "spades", "3" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("K" to "spades", "4" to "hearts")))
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("J" to "spades", "7" to "hearts"))) // Jack with 7+
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("Q" to "spades", "8" to "hearts"))) // Queen with 7+
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("K" to "spades", "9" to "hearts"))) // King with 7+
+        // Face cards with very low cards should fail under tightened rules
+        assertFalse(handEvaluator.hasWeakButPlayableHand(cards("J" to "spades", "2" to "hearts"))) // J2 too weak
     }
     
     @Test
-    fun `hasWeakButPlayableHand identifies medium pairs`() {
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("8" to "spades", "9" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("9" to "spades", "8" to "hearts")))
-        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("8" to "spades", "8" to "hearts")))
+    fun `hasWeakButPlayableHand identifies medium pairs and high cards`() {
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("9" to "spades", "9" to "hearts"))) // Pair of 9s
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("10" to "spades", "J" to "hearts"))) // Both high cards
+        assertTrue(handEvaluator.hasWeakButPlayableHand(cards("9" to "spades", "10" to "hearts"))) // Both 9+
     }
     
     @Test

@@ -64,9 +64,12 @@ class BettingStrategy(
                         if (strength.value >= 10) baseBet else (baseBet * 0.8).roundToInt()
                     }
                     HandEvaluator.HandRank.ONE_PAIR -> {
-                        // Only bet strong pairs or top pair
-                        if (strength.value >= 11) (basePot * StrategyConfig.postflopSmall * positionMultiplier).roundToInt()
-                        else 0 // Check weak pairs
+                        // Only bet strong pairs or top pair (Jacks or better)
+                        if (strength.value >= 11) {
+                            (basePot * StrategyConfig.postflopSmall * positionMultiplier).roundToInt()
+                        } else {
+                            0 // Check weak pairs
+                        }
                     }
                     HandEvaluator.HandRank.HIGH_CARD -> 0
                 }
@@ -135,7 +138,7 @@ class BettingStrategy(
                 // More conservative with weak playable hands
                 val maxCall = when (position) {
                     PositionAnalyzer.Position.EARLY -> smallBlind  // Very conservative
-                    PositionAnalyzer.Position.MIDDLE -> smallBlind * 1.5.toInt()
+                    PositionAnalyzer.Position.MIDDLE -> smallBlind * 2  // 2x small blind 
                     else -> smallBlind * 2  // Original threshold for late/blinds
                 }
                 if (callAmount <= maxCall && potOdds <= 0.2) {
