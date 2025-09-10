@@ -60,6 +60,12 @@ Examples:
 - `STRAT_MODE=LAG STRAT_BLUFF_RAISE=off ./gradlew run`
 - `./gradlew test -DSTRAT_MODE=TIGHT -DSTRAT_RISK_FREQ=0.05`
 
+### Config file (commit-based switching)
+- File: `src/main/resources/strategy.json` is read at runtime and can set the same fields:
+  - `{"mode": "LAG", "riskFreq": 0.12, "smallBetMult": 1.1, "bluffRaise": false}`
+- Precedence: JVM property/env var > config file > defaults.
+- To try a new strategy with a tiny commit, change only `strategy.json` and deploy.
+
 ## Commit & Pull Request Guidelines
 - Commits: imperative, concise subject (e.g., "Add betting strategy and tests").
 - PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `Player.version()` when changing strategy.

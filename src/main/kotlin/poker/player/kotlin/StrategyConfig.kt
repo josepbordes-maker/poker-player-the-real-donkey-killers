@@ -1,14 +1,41 @@
 package poker.player.kotlin
 
+import org.json.JSONObject
+import java.nio.charset.StandardCharsets
+
 object StrategyConfig {
     enum class Mode { TIGHT, STANDARD, LAG }
 
     private fun rawMode(): String? {
-        return System.getenv("STRAT_MODE") ?: System.getProperty("STRAT_MODE")
+        return System.getProperty("STRAT_MODE") ?: System.getenv("STRAT_MODE") ?: fileConfig.mode
     }
 
-    private fun envOrProp(name: String): String? {
-        return System.getProperty(name) ?: System.getenv(name)
+    private fun envOrProp(name: String, fallback: String? = null): String? {
+        return System.getProperty(name) ?: System.getenv(name) ?: fallback
+    }
+
+    private data class FileConfig(
+        val mode: String? = null,
+        val riskFreq: String? = null,
+        val smallBetMult: String? = null,
+        val bluffRaise: String? = null
+    )
+
+    private val fileConfig: FileConfig by lazy {
+        try {
+            val stream = StrategyConfig::class.java.getResourceAsStream("/strategy.json")
+                ?: return@lazy FileConfig()
+            val text = stream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            val json = JSONObject(text)
+            FileConfig(
+                mode = json.optString("mode", null),
+                riskFreq = json.opt("riskFreq")?.toString(),
+                smallBetMult = json.opt("smallBetMult")?.toString(),
+                bluffRaise = json.opt("bluffRaise")?.toString()
+            )
+        } catch (_: Exception) {
+            FileConfig()
+        }
     }
 
     fun mode(): Mode {
@@ -21,7 +48,7 @@ object StrategyConfig {
 
     val riskMoodProbability: Float
         get() {
-            val override = envOrProp("STRAT_RISK_FREQ")?.toFloatOrNull()
+            val override = envOrProp("STRAT_RISK_FREQ", fileConfig.riskFreq)?.toFloatOrNull()
             if (override != null) return override.coerceIn(0f, 0.5f)
             return when (mode()) {
                 Mode.TIGHT -> 0.05f
@@ -32,7 +59,7 @@ object StrategyConfig {
 
     val smallBetThresholdMultiplier: Double
         get() {
-            val override = envOrProp("STRAT_SMALLBET_MULT")?.toDoubleOrNull()
+            val override = envOrProp("STRAT_SMALLBET_MULT", fileConfig.smallBetMult)?.toDoubleOrNull()
             if (override != null) return override.coerceIn(0.5, 2.0)
             return when (mode()) {
                 Mode.TIGHT -> 0.8
@@ -45,7 +72,7 @@ object StrategyConfig {
         get() = mode() == Mode.LAG
 
     val bluffRaiseEnabled: Boolean
-        get() = when (envOrProp("STRAT_BLUFF_RAISE")?.trim()?.lowercase()) {
+        get() = when (envOrProp("STRAT_BLUFF_RAISE", fileConfig.bluffRaise)?.trim()?.lowercase()) {
             "0", "false", "off", "no" -> false
             else -> true
         }
