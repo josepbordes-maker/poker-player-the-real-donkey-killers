@@ -41,10 +41,6 @@ application {
     mainClass = 'poker.player.kotlin.ApplicationKt'
 }
 
-test {
-    useJUnitPlatform()
-}
-
 task stage {
     dependsOn assemble
 }
