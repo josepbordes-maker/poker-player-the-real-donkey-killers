@@ -5,6 +5,142 @@ import org.json.JSONObject
 import kotlin.math.abs
 
 class HandEvaluator {
+    
+    // Poker hand rankings from highest to lowest
+    enum class HandRank(val value: Int) {
+        ROYAL_FLUSH(10),
+        STRAIGHT_FLUSH(9),
+        FOUR_OF_A_KIND(8),
+        FULL_HOUSE(7),
+        FLUSH(6),
+        STRAIGHT(5),
+        THREE_OF_A_KIND(4),
+        TWO_PAIR(3),
+        ONE_PAIR(2),
+        HIGH_CARD(1)
+    }
+    
+    data class HandStrength(
+        val rank: HandRank,
+        val description: String,
+        val kickerValues: List<Int> = emptyList()
+    )
+    
+    /**
+     * Evaluates the best 5-card hand from hole cards + community cards
+     */
+    fun evaluateBestHand(holeCards: JSONArray, communityCards: JSONArray): HandStrength {
+        if (holeCards.length() != 2) {
+            return HandStrength(HandRank.HIGH_CARD, "Invalid hole cards")
+        }
+        
+        // Combine all available cards
+        val allCards = mutableListOf<JSONObject>()
+        for (i in 0 until holeCards.length()) {
+            allCards.add(holeCards.getJSONObject(i))
+        }
+        for (i in 0 until communityCards.length()) {
+            allCards.add(communityCards.getJSONObject(i))
+        }
+        
+        if (allCards.size < 5) {
+            // Pre-flop or early streets - evaluate hole cards only
+            return evaluateHoleCards(holeCards)
+        }
+        
+        return findBestFiveCardHand(allCards)
+    }
+    
+    private fun evaluateHoleCards(holeCards: JSONArray): HandStrength {
+        val card1 = holeCards.getJSONObject(0)
+        val card2 = holeCards.getJSONObject(1)
+        val rank1 = card1.getString("rank")
+        val rank2 = card2.getString("rank")
+        val suit1 = card1.getString("suit")
+        val suit2 = card2.getString("suit")
+        
+        val value1 = CardUtils.getRankValue(rank1)
+        val value2 = CardUtils.getRankValue(rank2)
+        val isPair = rank1 == rank2
+        val isSuited = suit1 == suit2
+        
+        return when {
+            isPair -> HandStrength(
+                HandRank.ONE_PAIR,
+                "Pocket ${rank1}s",
+                listOf(value1, value2)
+            )
+            isSuited -> HandStrength(
+                HandRank.HIGH_CARD,
+                "Suited ${rank1}${rank2}",
+                listOf(maxOf(value1, value2), minOf(value1, value2))
+            )
+            else -> HandStrength(
+                HandRank.HIGH_CARD,
+                "Offsuit ${rank1}${rank2}",
+                listOf(maxOf(value1, value2), minOf(value1, value2))
+            )
+        }
+    }
+    
+    private fun findBestFiveCardHand(allCards: List<JSONObject>): HandStrength {
+        // For simplicity, we'll implement basic hand detection
+        // In a full implementation, you'd generate all 5-card combinations
+        
+        val ranks = allCards.map { CardUtils.getRankValue(it.getString("rank")) }.sorted().reversed()
+        val suits = allCards.map { it.getString("suit") }
+        val rankCounts = ranks.groupingBy { it }.eachCount()
+        
+        // Check for flush
+        val flushSuit = suits.groupingBy { it }.eachCount().entries.find { it.value >= 5 }?.key
+        val isFlush = flushSuit != null
+        
+        // Check for straight
+        val isStraight = checkStraight(ranks.distinct())
+        
+        // Determine best hand
+        return when {
+            isFlush && isStraight && ranks.contains(14) && ranks.contains(13) -> 
+                HandStrength(HandRank.ROYAL_FLUSH, "Royal Flush")
+            isFlush && isStraight -> 
+                HandStrength(HandRank.STRAIGHT_FLUSH, "Straight Flush")
+            rankCounts.containsValue(4) -> 
+                HandStrength(HandRank.FOUR_OF_A_KIND, "Four of a Kind")
+            rankCounts.containsValue(3) && rankCounts.containsValue(2) -> 
+                HandStrength(HandRank.FULL_HOUSE, "Full House")
+            isFlush -> 
+                HandStrength(HandRank.FLUSH, "Flush")
+            isStraight -> 
+                HandStrength(HandRank.STRAIGHT, "Straight")
+            rankCounts.containsValue(3) -> 
+                HandStrength(HandRank.THREE_OF_A_KIND, "Three of a Kind")
+            rankCounts.values.count { it == 2 } >= 2 -> 
+                HandStrength(HandRank.TWO_PAIR, "Two Pair")
+            rankCounts.containsValue(2) -> 
+                HandStrength(HandRank.ONE_PAIR, "One Pair")
+            else -> 
+                HandStrength(HandRank.HIGH_CARD, "High Card", ranks.take(5))
+        }
+    }
+    
+    private fun checkStraight(distinctRanks: List<Int>): Boolean {
+        val sorted = distinctRanks.sorted()
+        if (sorted.size < 5) return false
+        
+        // Check for regular straight
+        for (i in 0..sorted.size - 5) {
+            if (sorted[i + 4] - sorted[i] == 4) return true
+        }
+        
+        // Check for A-2-3-4-5 straight (wheel)
+        if (sorted.contains(14) && sorted.contains(2) && sorted.contains(3) && 
+            sorted.contains(4) && sorted.contains(5)) {
+            return true
+        }
+        
+        return false
+    }
+
     fun hasStrongHand(cards: JSONArray): Boolean {
         if (cards.length() != 2) return false
         

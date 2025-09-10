@@ -5,6 +5,7 @@ import org.json.JSONObject
 
 class GameStateManager {
     private val seenCardsByGame = mutableMapOf<String, MutableSet<String>>()
+    private val handEvaluator = HandEvaluator()
 
     fun addSeenCards(gameId: String, cards: JSONArray) {
         val set = seenCardsByGame.getOrPut(gameId) { mutableSetOf() }
@@ -25,16 +26,84 @@ class GameStateManager {
     }
     
     fun processShowdown(game_state: JSONObject) {
-        // Capture revealed cards and clear memory for this game
+        // Capture revealed cards and analyze final hand strength
         val gameId = game_state.optString("game_id", "")
         val players = game_state.optJSONArray("players")
+        val communityCards = game_state.optJSONArray("community_cards") ?: JSONArray()
+        
         if (players != null) {
+            analyzeShowdownHands(players, communityCards, gameId)
+            
+            // Add all revealed cards to seen cards
             for (i in 0 until players.length()) {
                 val p = players.getJSONObject(i)
                 val hc = p.optJSONArray("hole_cards")
                 if (hc != null) addSeenCards(gameId, hc)
             }
         }
+        
         clearGameMemory(gameId)
+    }
+    
+    private fun analyzeShowdownHands(players: JSONArray, communityCards: JSONArray, gameId: String) {
+        val handAnalysis = mutableListOf<String>()
+        
+        // Find our player and analyze all revealed hands
+        for (i in 0 until players.length()) {
+            val player = players.getJSONObject(i)
+            val holeCards = player.optJSONArray("hole_cards")
+            val playerName = player.optString("name", "Player $i")
+            val stack = player.optInt("stack", 0)
+            
+            if (holeCards != null && holeCards.length() == 2) {
+                val handStrength = handEvaluator.evaluateBestHand(holeCards, communityCards)
+                val holeCardsStr = formatCards(holeCards)
+                
+                handAnalysis.add(
+                    "$playerName: $holeCardsStr -> ${handStrength.description} (${handStrength.rank.name}), Stack: $stack"
+                )
+            }
+        }
+        
+        // Log the showdown analysis
+        if (handAnalysis.isNotEmpty()) {
+            println("=== SHOWDOWN ANALYSIS for Game $gameId ===")
+            println("Community Cards: ${formatCards(communityCards)}")
+            handAnalysis.forEach { println(it) }
+            
+            // Determine winner(s) based on hand strength
+            val bestRank = handAnalysis.maxOfOrNull { line ->
+                val rankName = line.substringAfter("(").substringBefore(")")
+                HandEvaluator.HandRank.valueOf(rankName).value
+            } ?: 0
+            
+            val winners = handAnalysis.filter { line ->
+                val rankName = line.substringAfter("(").substringBefore(")")
+                HandEvaluator.HandRank.valueOf(rankName).value == bestRank
+            }
+            
+            println("Winner(s): ${winners.joinToString("; ")}")
+            println("=========================================")
+        }
+    }
+    
+    private fun formatCards(cards: JSONArray): String {
+        if (cards.length() == 0) return "None"
+        
+        val cardStrings = mutableListOf<String>()
+        for (i in 0 until cards.length()) {
+            val card = cards.getJSONObject(i)
+            val rank = card.getString("rank")
+            val suit = card.getString("suit")
+            val suitSymbol = when (suit) {
+                "spades" -> "♠"
+                "hearts" -> "♥"
+                "diamonds" -> "♦"
+                "clubs" -> "♣"
+                else -> suit.first().uppercaseChar()
+            }
+            cardStrings.add("$rank$suitSymbol")
+        }
+        return cardStrings.joinToString(" ")
     }
 }

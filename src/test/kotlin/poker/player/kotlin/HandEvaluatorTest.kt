@@ -5,6 +5,7 @@ import org.json.JSONObject
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 
 class HandEvaluatorTest {
     
@@ -184,5 +185,157 @@ class HandEvaluatorTest {
         assertFalse(handEvaluator.hasDecentHand(singleCard))
         assertFalse(handEvaluator.hasWeakButPlayableHand(singleCard))
         assertFalse(handEvaluator.hasMarginalHand(singleCard))
+    }
+    
+    // ===== Tests for new evaluateBestHand functionality =====
+    
+    @Test
+    fun `evaluateBestHand identifies pocket pairs correctly`() {
+        val holeCards = cards("A" to "spades", "A" to "hearts")
+        val communityCards = JSONArray() // Pre-flop
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.ONE_PAIR, result.rank)
+        assertEquals("Pocket As", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies suited hole cards`() {
+        val holeCards = cards("K" to "spades", "Q" to "spades")
+        val communityCards = JSONArray() // Pre-flop
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.HIGH_CARD, result.rank)
+        assertEquals("Suited KQ", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies offsuit hole cards`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val communityCards = JSONArray() // Pre-flop
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.HIGH_CARD, result.rank)
+        assertEquals("Offsuit AK", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies royal flush`() {
+        val holeCards = cards("A" to "spades", "K" to "spades")
+        val communityCards = cards("Q" to "spades", "J" to "spades", "10" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.ROYAL_FLUSH, result.rank)
+        assertEquals("Royal Flush", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies straight flush`() {
+        val holeCards = cards("9" to "hearts", "8" to "hearts")
+        val communityCards = cards("7" to "hearts", "6" to "hearts", "5" to "hearts")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.STRAIGHT_FLUSH, result.rank)
+        assertEquals("Straight Flush", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies four of a kind`() {
+        val holeCards = cards("A" to "spades", "A" to "hearts")
+        val communityCards = cards("A" to "clubs", "A" to "diamonds", "K" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.FOUR_OF_A_KIND, result.rank)
+        assertEquals("Four of a Kind", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies full house`() {
+        val holeCards = cards("K" to "spades", "K" to "hearts")
+        val communityCards = cards("K" to "clubs", "Q" to "diamonds", "Q" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.FULL_HOUSE, result.rank)
+        assertEquals("Full House", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies flush`() {
+        val holeCards = cards("A" to "spades", "K" to "spades")
+        val communityCards = cards("Q" to "spades", "J" to "spades", "9" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.FLUSH, result.rank)
+        assertEquals("Flush", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies straight`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val communityCards = cards("Q" to "clubs", "J" to "diamonds", "10" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.STRAIGHT, result.rank)
+        assertEquals("Straight", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies wheel straight`() {
+        val holeCards = cards("A" to "spades", "2" to "hearts")
+        val communityCards = cards("3" to "clubs", "4" to "diamonds", "5" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.STRAIGHT, result.rank)
+        assertEquals("Straight", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies three of a kind`() {
+        val holeCards = cards("Q" to "spades", "Q" to "hearts")
+        val communityCards = cards("Q" to "clubs", "J" to "diamonds", "9" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.THREE_OF_A_KIND, result.rank)
+        assertEquals("Three of a Kind", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies two pair`() {
+        val holeCards = cards("A" to "spades", "A" to "hearts")
+        val communityCards = cards("K" to "clubs", "K" to "diamonds", "Q" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.TWO_PAIR, result.rank)
+        assertEquals("Two Pair", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies one pair`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val communityCards = cards("Q" to "clubs", "Q" to "diamonds", "J" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.ONE_PAIR, result.rank)
+        assertEquals("One Pair", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand identifies high card`() {
+        val holeCards = cards("A" to "spades", "K" to "hearts")
+        val communityCards = cards("Q" to "clubs", "J" to "diamonds", "9" to "spades")
+        
+        val result = handEvaluator.evaluateBestHand(holeCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.HIGH_CARD, result.rank)
+        assertEquals("High Card", result.description)
+    }
+    
+    @Test
+    fun `evaluateBestHand handles invalid hole cards`() {
+        val invalidHoleCards = cards("A" to "spades") // Only one card
+        val communityCards = cards("K" to "hearts", "Q" to "clubs", "J" to "diamonds", "10" to "spades", "9" to "hearts")
+        
+        val result = handEvaluator.evaluateBestHand(invalidHoleCards, communityCards)
+        assertEquals(HandEvaluator.HandRank.HIGH_CARD, result.rank)
+        assertEquals("Invalid hole cards", result.description)
     }
 }

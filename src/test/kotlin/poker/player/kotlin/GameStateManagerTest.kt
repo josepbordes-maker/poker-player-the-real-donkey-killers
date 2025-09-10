@@ -198,4 +198,107 @@ class GameStateManagerTest {
         // Memory should still be cleared
         assertTrue(gameStateManager.getSeenCards(gameId).isEmpty())
     }
+    
+    @Test
+    fun `processShowdown analyzes hands with community cards`() {
+        val gameId = "showdown_test"
+        val gameState = JSONObject()
+        gameState.put("game_id", gameId)
+        
+        // Create a showdown scenario with community cards
+        val communityCards = cards("A" to "spades", "K" to "hearts", "Q" to "clubs", "J" to "diamonds", "10" to "spades")
+        gameState.put("community_cards", communityCards)
+        
+        val players = JSONArray()
+        
+        // Player with royal flush
+        val player1 = JSONObject()
+        player1.put("name", "RoyalFlushPlayer")
+        player1.put("stack", 2000)
+        player1.put("hole_cards", cards("A" to "hearts", "K" to "spades")) // Will make royal flush with community
+        players.put(player1)
+        
+        // Player with pair
+        val player2 = JSONObject()
+        player2.put("name", "PairPlayer")
+        player2.put("stack", 1500)
+        player2.put("hole_cards", cards("2" to "hearts", "2" to "spades"))
+        players.put(player2)
+        
+        gameState.put("players", players)
+        
+        // This should analyze and print the showdown without throwing exceptions
+        gameStateManager.processShowdown(gameState)
+        
+        // Memory should be cleared after analysis
+        assertTrue(gameStateManager.getSeenCards(gameId).isEmpty())
+    }
+    
+    @Test
+    fun `processShowdown handles pre-flop showdown`() {
+        val gameId = "preflop_test"
+        val gameState = JSONObject()
+        gameState.put("game_id", gameId)
+        
+        // No community cards (pre-flop all-in scenario)
+        val players = JSONArray()
+        
+        val player1 = JSONObject()
+        player1.put("name", "PocketAces")
+        player1.put("stack", 0)
+        player1.put("hole_cards", cards("A" to "spades", "A" to "hearts"))
+        players.put(player1)
+        
+        val player2 = JSONObject()
+        player2.put("name", "PocketKings")
+        player2.put("stack", 0)
+        player2.put("hole_cards", cards("K" to "spades", "K" to "hearts"))
+        players.put(player2)
+        
+        gameState.put("players", players)
+        
+        // Should handle pre-flop analysis
+        gameStateManager.processShowdown(gameState)
+        
+        assertTrue(gameStateManager.getSeenCards(gameId).isEmpty())
+    }
+    
+    @Test
+    fun `processShowdown handles mixed scenarios`() {
+        val gameId = "mixed_test"
+        val gameState = JSONObject()
+        gameState.put("game_id", gameId)
+        
+        val communityCards = cards("7" to "spades", "8" to "hearts", "9" to "clubs")
+        gameState.put("community_cards", communityCards)
+        
+        val players = JSONArray()
+        
+        // Player with completed hand
+        val player1 = JSONObject()
+        player1.put("name", "Player1")
+        player1.put("stack", 1000)
+        player1.put("hole_cards", cards("6" to "diamonds", "10" to "spades"))
+        players.put(player1)
+        
+        // Player without hole cards revealed (folded)
+        val player2 = JSONObject()
+        player2.put("name", "FoldedPlayer")
+        player2.put("stack", 1200)
+        // No hole_cards
+        players.put(player2)
+        
+        // Player with hole cards but no name
+        val player3 = JSONObject()
+        player3.put("stack", 800)
+        player3.put("hole_cards", cards("A" to "spades", "A" to "hearts"))
+        players.put(player3)
+        
+        gameState.put("players", players)
+        
+        // Should handle mixed scenario gracefully
+        gameStateManager.processShowdown(gameState)
+        
+        assertTrue(gameStateManager.getSeenCards(gameId).isEmpty())
+    }
 }
