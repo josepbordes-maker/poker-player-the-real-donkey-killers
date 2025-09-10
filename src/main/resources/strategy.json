@@ -1,14 +1,14 @@
 {
-  "mode": "TIGHT",
-  "riskFreq": 0.04,
-  "smallBetMult": 0.75,
-  "bluffRaise": false,
+  "mode": "STANDARD",
+  "riskFreq": 0.12,
+  "smallBetMult": 1.0,
+  "bluffRaise": true,
   "rainMan": true,
-  "postflopSmall": 0.4,
-  "postflopMed": 0.6,
-  "postflopBig": 0.85,
+  "postflopSmall": 0.35,
+  "postflopMed": 0.55,
+  "postflopBig": 0.75,
   "antiLimp": true,
-  "squeeze": true
-  , "structuredLogs": true
-  , "quietLogs": true
+  "squeeze": true,
+  "structuredLogs": true,
+  "quietLogs": true
 }

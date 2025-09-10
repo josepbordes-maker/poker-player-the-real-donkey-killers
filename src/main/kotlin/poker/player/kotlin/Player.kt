@@ -8,9 +8,7 @@ class Player {
     private val handEvaluator = HandEvaluator()
     private val positionAnalyzer = PositionAnalyzer()
     private val opponentModeling = OpponentModeling()
-    private val bettingStrategy = BettingStrategy(handEvaluator, positionAnalyzer)
-    private val enhancedBettingStrategy = EnhancedBettingStrategy(handEvaluator, positionAnalyzer, opponentModeling)
-    private val postFlopStrategy = PostFlopStrategy(handEvaluator, positionAnalyzer, opponentModeling)
+    // Only instantiate the strategy we actually use - DynamicStrategyManager
     private val dynamicStrategyManager = DynamicStrategyManager(handEvaluator, positionAnalyzer, opponentModeling)
     
     // Track game state for enhanced decision making
@@ -19,6 +17,10 @@ class Player {
     private var lastBetAmount: Int = 0
     private var lastGameId: String = ""
     private var prevCurrentBuyIn: Int = 0
+    
+    // Simple hand evaluation cache to avoid redundant calculations
+    private var cachedHandEval: HandEvaluator.HandStrength? = null
+    private var cachedHandEvalKey: String = ""
 
     fun betRequest(game_state: JSONObject): Int {
         // Parse game state
@@ -147,7 +149,7 @@ class Player {
                 else -> "TRASH"
             }
             val evalRank = if (community.length() >= 3) {
-                handEvaluator.evaluateBestHand(myCards, community).rank.name
+                getCachedHandEvaluation(myCards, community).rank.name
             } else {
                 "NA"
             }
@@ -242,7 +244,7 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v3.3 - Tightened Quick Wins ($mode)"
+        return "Real Donkey Killer v3.4 - Optimized Quick Wins ($mode)"
     }
     
     /**
@@ -365,5 +367,23 @@ class Player {
         
         // Update previous buy-in for aggressor detection
         prevCurrentBuyIn = currentBuyIn
+    }
+    
+    /**
+     * Get cached hand evaluation to avoid redundant calculations
+     */
+    private fun getCachedHandEvaluation(myCards: JSONArray, community: JSONArray): HandEvaluator.HandStrength {
+        val cacheKey = "${formatCards(myCards)}-${formatCards(community)}"
+        
+        if (cachedHandEvalKey == cacheKey && cachedHandEval != null) {
+            return cachedHandEval!!
+        }
+        
+        // Cache miss - compute and store
+        val result = handEvaluator.evaluateBestHand(myCards, community)
+        cachedHandEval = result
+        cachedHandEvalKey = cacheKey
+        
+        return result
     }
 }
