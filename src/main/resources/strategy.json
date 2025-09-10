@@ -9,4 +9,6 @@
   "postflopBig": 0.8,
   "antiLimp": true,
   "squeeze": true
+  , "structuredLogs": true
+  , "quietLogs": true
 }
