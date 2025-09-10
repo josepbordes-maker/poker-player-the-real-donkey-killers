@@ -155,7 +155,7 @@ class EnhancedBettingStrategy(
             val hasCallers = atBuyIn >= 2
 
             // Anti-limp punish: limped pot (no raise), late position, decent+ hand
-            if (!isRaisePreflop && hasCallers && position == PositionAnalyzer.Position.LATE) {
+            if (StrategyConfig.enableAntiLimp && !isRaisePreflop && hasCallers && position == PositionAnalyzer.Position.LATE) {
                 val handStrength = getHandStrength(myCards, communityCards)
                 if (handStrength >= HandStrength.DECENT) {
                     val limpers = atBuyIn - 1 // exclude big blind
@@ -165,7 +165,7 @@ class EnhancedBettingStrategy(
             }
 
             // Squeeze play: raised pot with at least one caller
-            if (isRaisePreflop && hasCallers && (position == PositionAnalyzer.Position.LATE || position == PositionAnalyzer.Position.BLINDS)) {
+            if (StrategyConfig.enableSqueeze && isRaisePreflop && hasCallers && (position == PositionAnalyzer.Position.LATE || position == PositionAnalyzer.Position.BLINDS)) {
                 val handStrength = getHandStrength(myCards, communityCards)
                 if (handStrength >= HandStrength.STRONG) {
                     val callers = atBuyIn - 1 // exclude raiser

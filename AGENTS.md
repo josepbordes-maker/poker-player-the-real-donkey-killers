@@ -55,6 +55,8 @@ Requirements: Java 21 toolchain (Gradle config manages this). For tests, ensure 
 - `STRAT_SMALLBET_MULT` = `0.5–2.0` scales position small-bet call thresholds.
 - `STRAT_BLUFF_RAISE` = `off|on` disables/enables bluff-raises in risk mood (default on).
 - `STRAT_RAINMAN` = `off|on` disables/enables Rain Man API usage (default on). For CI/offline, set to `off`.
+ - `STRAT_ANTI_LIMP` = `off|on` enable/disable anti-limp isolation raises (default on).
+ - `STRAT_SQUEEZE` = `off|on` enable/disable squeeze plays over raise+callers (default on).
 - Post-flop bet sizing (fractions of pot when no bet to call on flop/turn/river):
   - `STRAT_POSTFLOP_SMALL` (default 0.33)
   - `STRAT_POSTFLOP_MED` (default 0.5)
@@ -68,7 +70,7 @@ Examples:
 
 ### Config file (commit-based switching)
 - File: `src/main/resources/strategy.json` is read at runtime and can set the same fields:
-  - `{"mode": "LAG", "riskFreq": 0.12, "smallBetMult": 1.1, "bluffRaise": false, "postflopSmall": 0.3, "postflopMed": 0.45, "postflopBig": 0.7}`
+  - `{"mode": "LAG", "riskFreq": 0.12, "smallBetMult": 1.1, "bluffRaise": false, "postflopSmall": 0.3, "postflopMed": 0.45, "postflopBig": 0.7, "antiLimp": true, "squeeze": true}`
 - Precedence: JVM property/env var > config file > defaults.
 - To try a new strategy with a tiny commit, change only `strategy.json` and deploy.
 

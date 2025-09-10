@@ -22,7 +22,9 @@ object StrategyConfig {
         val rainMan: String? = null,
         val postSmall: String? = null,
         val postMed: String? = null,
-        val postBig: String? = null
+        val postBig: String? = null,
+        val antiLimp: String? = null,
+        val squeeze: String? = null
     )
 
     private val fileConfig: FileConfig by lazy {
@@ -39,7 +41,9 @@ object StrategyConfig {
                 rainMan = json.opt("rainMan")?.toString(),
                 postSmall = json.opt("postflopSmall")?.toString(),
                 postMed = json.opt("postflopMed")?.toString(),
-                postBig = json.opt("postflopBig")?.toString()
+                postBig = json.opt("postflopBig")?.toString(),
+                antiLimp = json.opt("antiLimp")?.toString(),
+                squeeze = json.opt("squeeze")?.toString()
             )
         } catch (_: Exception) {
             FileConfig()
@@ -87,6 +91,18 @@ object StrategyConfig {
 
     val enableRainMan: Boolean
         get() = when (envOrProp("STRAT_RAINMAN", fileConfig.rainMan)?.trim()?.lowercase()) {
+            "0", "false", "off", "no" -> false
+            else -> true
+        }
+
+    val enableAntiLimp: Boolean
+        get() = when (envOrProp("STRAT_ANTI_LIMP", fileConfig.antiLimp)?.trim()?.lowercase()) {
+            "0", "false", "off", "no" -> false
+            else -> true
+        }
+
+    val enableSqueeze: Boolean
+        get() = when (envOrProp("STRAT_SQUEEZE", fileConfig.squeeze)?.trim()?.lowercase()) {
             "0", "false", "off", "no" -> false
             else -> true
         }
