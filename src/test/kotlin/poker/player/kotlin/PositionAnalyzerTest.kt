@@ -103,7 +103,7 @@ class PositionAnalyzerTest {
     fun `getSmallBetThreshold returns correct values by position`() {
         val pot = 100
         
-        assertEquals(25, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, pot))
+        assertEquals(20, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, pot)) // Updated to pot/5
         assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.MIDDLE, pot))
         assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, pot)) // Changed from pot/2 to pot/3
         assertEquals(33, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.BLINDS, pot)) // Changed from pot/2 to pot/3
@@ -111,7 +111,7 @@ class PositionAnalyzerTest {
     
     @Test
     fun `getSmallBetThreshold scales with pot size`() {
-        assertEquals(50, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, 200))
+        assertEquals(40, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.EARLY, 200)) // Updated to pot/5
         assertEquals(66, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.MIDDLE, 200))
         assertEquals(66, positionAnalyzer.getSmallBetThreshold(PositionAnalyzer.Position.LATE, 200)) // Changed from pot/2 to pot/3
     }

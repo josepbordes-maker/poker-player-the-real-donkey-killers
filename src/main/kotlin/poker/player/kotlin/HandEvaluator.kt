@@ -322,9 +322,9 @@ class HandEvaluator(
                 println("      hasDecentHand() - ANY PAIR: $rank1$rank2 -> TRUE")
                 true // Any pair
             }
-            CardUtils.getRankValue(rank1) >= 9 || CardUtils.getRankValue(rank2) >= 9 -> {
-                println("      hasDecentHand() - HIGH CARD (9+): $rank1$rank2 -> TRUE")
-                true // 9+ cards (was 10+)
+            CardUtils.getRankValue(rank1) >= 10 || CardUtils.getRankValue(rank2) >= 10 -> {
+                println("      hasDecentHand() - HIGH CARD (10+): $rank1$rank2 -> TRUE")
+                true // 10+ cards for tighter play
             }
             isSuited && abs(CardUtils.getRankValue(rank1) - CardUtils.getRankValue(rank2)) <= 2 -> {
                 println("      hasDecentHand() - SUITED CONNECTOR/GAPPER: $rank1$rank2 suited -> TRUE")

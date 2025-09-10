@@ -186,7 +186,7 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v3.2 - Optimized Quick Wins ($mode)"
+        return "Real Donkey Killer v3.3 - Tightened Quick Wins ($mode)"
     }
     
     /**

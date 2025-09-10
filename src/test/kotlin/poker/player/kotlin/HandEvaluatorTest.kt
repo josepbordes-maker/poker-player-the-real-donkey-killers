@@ -69,7 +69,7 @@ class HandEvaluatorTest {
     
     @Test
     fun `hasDecentHand identifies high cards`() {
-        assertTrue(handEvaluator.hasDecentHand(cards("9" to "spades", "2" to "hearts")))
+        assertFalse(handEvaluator.hasDecentHand(cards("9" to "spades", "2" to "hearts"))) // 9 no longer decent
         assertTrue(handEvaluator.hasDecentHand(cards("10" to "spades", "3" to "hearts")))
         assertTrue(handEvaluator.hasDecentHand(cards("J" to "spades", "4" to "hearts")))
         assertTrue(handEvaluator.hasDecentHand(cards("Q" to "spades", "5" to "hearts")))

@@ -124,8 +124,8 @@ class BettingStrategy(
             hasDecent -> {
                 // Better pot odds consideration for decent hands
                 val shouldCall = callAmount <= smallBetThreshold || 
-                                (potOdds <= 0.33 && position != PositionAnalyzer.Position.EARLY) ||
-                                (potOdds <= 0.25 && position == PositionAnalyzer.Position.EARLY)
+                                (potOdds <= 0.25 && position != PositionAnalyzer.Position.EARLY) ||
+                                (potOdds <= 0.20 && position == PositionAnalyzer.Position.EARLY)
                 if (shouldCall) {
                     println("  DECENT HAND with good odds -> CALL $callAmount")
                     callAmount
@@ -238,9 +238,9 @@ class BettingStrategy(
                     val value1 = CardUtils.getRankValue(rank1)
                     val value2 = CardUtils.getRankValue(rank2)
                     
-                    val shouldOpen = isPair || // Any pocket pair
-                                   (isSuited && (rank1 == "A" || rank2 == "A")) || // Suited aces
-                                   (isSuited && minOf(value1, value2) >= 8 && kotlin.math.abs(value1 - value2) <= 1) // Strong suited connectors
+                    val shouldOpen = (isPair && minOf(value1, value2) >= 6) || // Pocket pairs 66+
+                                   (isSuited && (rank1 == "A" || rank2 == "A") && maxOf(value1, value2) >= 9) || // Suited aces A9s+
+                                   (isSuited && minOf(value1, value2) >= 9 && kotlin.math.abs(value1 - value2) <= 1) // Strong suited connectors 9+
                     
                     if (shouldOpen) {
                         val raiseSize = min(myStack, smallBlind * 3) // Smaller sizing for marginal hands
