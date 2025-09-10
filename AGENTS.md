@@ -2,37 +2,59 @@
 
 ## Project Structure & Module Organization
 - Source: `src/main/kotlin/poker/player/kotlin/` (entrypoint: `Application.kt`).
-- Core modules: `GameState.kt` (models), `HandEvaluator.kt` (hand strength/position), `BettingStrategy.kt` (bet sizing), `Player.kt` (bot facade).
-- Tests: `src/test/kotlin/poker/player/kotlin/` with `*Test.kt` classes.
+- Core modules (modularized):
+  - `Player.kt` — bot facade delegating to strategy classes
+  - `BettingStrategy.kt` — preflop bet logic and sizing
+  - `HandEvaluator.kt` — hand classification (strong/decent/weak/marginal)
+  - `PositionAnalyzer.kt` — position mapping and thresholds/open sizes
+  - `GameStateManager.kt` — seen-card memory; showdown processing
+  - `CardUtils.kt` — rank helpers and card normalization
+- Tests: `src/test/kotlin/poker/player/kotlin/` with unit tests per module:
+  - `BettingStrategyTest.kt`, `HandEvaluatorTest.kt`, `PositionAnalyzerTest.kt`,
+    `GameStateManagerTest.kt`, `CardUtilsTest.kt`, `PlayerTest.kt`.
 - Build config: `build.gradle`, `settings.gradle`. Deployment uses `Procfile` and `PORT` env var.
 
 ## Build, Test, and Development Commands
 - Run locally: `./gradlew run` (Ktor server on `:8080` or `$PORT`).
 - Test all: `./gradlew test`.
-- Test one class: `./gradlew test --tests "*.HandEvaluatorTest"`.
+- Test one class: `./gradlew test --tests "*.BettingStrategyTest"` (or any `*Test`).
 - Build JAR: `./gradlew build` (outputs under `build/libs/`).
 - Quick smoke: `curl -X POST localhost:8080 -d "action=version"`.
 
-Requirements: Java 21 toolchain (Gradle config manages this).
+Requirements: Java 21 toolchain (Gradle config manages this). For tests, ensure JUnit 5 is enabled in `build.gradle`:
+
+- Add dependencies:
+  - `testImplementation "org.jetbrains.kotlin:kotlin-test"`
+  - `testImplementation "org.jetbrains.kotlin:kotlin-test-junit5"`
+  - `testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.2"`
+  - `testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.2"`
+- Configure: `test { useJUnitPlatform() }`
 
 ## Coding Style & Naming Conventions
 - Kotlin official style; 4‑space indent; 100–120 col soft limit.
 - Packages: lower_snake by path; types/files: `PascalCase` (e.g., `HandEvaluator.kt`).
 - Functions/props: `camelCase`; boolean predicates start with `is/has/should`.
 - Prefer data classes, `when` over if‑else, and small, single‑purpose functions.
-- Use extension functions for JSON parsing (see `JSONObject.toGameState()`).
+- Prefer small helpers over heavy parsing layers; use `CardUtils` and `GameStateManager` for card and state helpers.
 
 ## Testing Guidelines
 - Frameworks: Kotlin Test + JUnit 5 (`useJUnitPlatform()`).
 - Location/naming: mirror package under `src/test/...`, file ends with `Test.kt`.
 - Test names: backticked, behavior‑driven (e.g., ``fun `ace king should be premium`()``).
-- Aim to cover: hand evaluation, pre‑flop decision matrix, JSON parsing helpers.
+- Aim to cover: hand evaluation, pre‑flop decision matrix, position thresholds, card memory helpers.
+- Strategy v1.1 expectations reflected in tests:
+  - Strong-hand raise when facing bets: `call + 2 × minimum_raise`.
+  - No unconditional small-bet calls; require at least a weak-but-playable hand.
+  - Blinds open only strong hands; otherwise check.
 - Run locally via `./gradlew test`; target fast, deterministic tests.
 
 ## Commit & Pull Request Guidelines
 - Commits: imperative, concise subject (e.g., "Add betting strategy and tests").
-- PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `PokerPlayer.version()` when changing strategy.
+- PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `Player.version()` when changing strategy.
 - Keep changes focused; include new/updated tests for logic changes.
+
+Strategy tracking:
+- Update `STRATEGY_SUMMARY.md` and bump `Player.version()` when changing strategic behavior.
 
 ## Security & Configuration Tips
 - Never log sensitive hole cards in production logs.
