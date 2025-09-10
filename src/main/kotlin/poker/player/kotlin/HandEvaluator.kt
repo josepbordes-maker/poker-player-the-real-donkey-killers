@@ -302,7 +302,7 @@ class HandEvaluator(
         return result
     }
     
-    fun hasDecentHand(cards: JSONArray): Boolean {
+    fun hasDecentHand(cards: JSONArray, isHeadsUp: Boolean = false): Boolean {
         if (cards.length() != 2) {
             println("      hasDecentHand() - Invalid card count: ${cards.length()}")
             return false
@@ -332,7 +332,7 @@ class HandEvaluator(
             }
             (rank1 == "A" || rank2 == "A") -> {
                 println("      hasDecentHand() - ANY ACE: $rank1$rank2 -> TRUE")
-                true // Any ace
+                true // Any ace - critical for heads-up play
             }
             (rank1 == "K" || rank2 == "K") -> {
                 println("      hasDecentHand() - ANY KING: $rank1$rank2 -> TRUE")
@@ -342,6 +342,11 @@ class HandEvaluator(
                 println("      hasDecentHand() - TWO BROADWAY: $rank1$rank2 -> TRUE")
                 true // Two broadway cards (10, J, Q, K, A)
             }
+            // Heads-up specific expansions for marginal hands like T5o
+            isHeadsUp && (CardUtils.getRankValue(rank1) >= 10 || CardUtils.getRankValue(rank2) >= 10) -> {
+                println("      hasDecentHand() - HEADS-UP HIGH CARD: $rank1$rank2 -> TRUE")
+                true // Any 10+ in heads-up
+            }
             else -> {
                 println("      hasDecentHand() - NOT DECENT: $rank1$rank2 -> FALSE")
                 false
@@ -350,7 +355,7 @@ class HandEvaluator(
         return result
     }
     
-    fun hasWeakButPlayableHand(cards: JSONArray): Boolean {
+    fun hasWeakButPlayableHand(cards: JSONArray, isHeadsUp: Boolean = false): Boolean {
         if (cards.length() != 2) return false
         
         val card1 = cards.getJSONObject(0)
@@ -365,7 +370,30 @@ class HandEvaluator(
         val gap = abs(value1 - value2)
         val isSuited = suit1 == suit2
         
-        // Tightened weak but playable definition
+        // Heads-up specific weak but playable (much wider range)
+        if (isHeadsUp) {
+            return when {
+                // Any ace (A7o, A2o, etc.)
+                value1 == 14 || value2 == 14 -> true
+                // Any king with 7+ 
+                (value1 == 13 && value2 >= 7) || (value2 == 13 && value1 >= 7) -> true
+                // Any queen with 9+
+                (value1 == 12 && value2 >= 9) || (value2 == 12 && value1 >= 9) -> true
+                // T5o and similar one-high-card combos
+                (value1 >= 10 && value2 >= 5) || (value2 >= 10 && value1 >= 5) -> true
+                // Any pair
+                gap == 0 -> true
+                // Suited cards with reasonable connectivity
+                isSuited && minOf(value1, value2) >= 5 && gap <= 4 -> true
+                // Connected or one-gap with decent values
+                gap <= 1 && minOf(value1, value2) >= 6 -> true
+                // Both cards 8+
+                value1 >= 8 && value2 >= 8 -> true
+                else -> false
+            }
+        }
+        
+        // Standard (non-heads-up) weak but playable definition
         return when {
             // Suited cards with reasonable values (7+ or connected) OR suited aces
             isSuited && (minOf(value1, value2) >= 7 || gap <= 1 || value1 == 14 || value2 == 14) -> true

@@ -21,9 +21,14 @@ class BettingStrategy(
         pot: Int,
         smallBlind: Int,
         minimumRaise: Int,
-        position: PositionAnalyzer.Position
+        position: PositionAnalyzer.Position,
+        players: JSONArray? = null
     ): Int {
         println("  --- BettingStrategy.calculateBet() ---")
+        
+        // Detect heads-up situation
+        val isHeadsUp = players?.let { countActivePlayers(it) == 2 } ?: false
+        println("  Heads-up detection: $isHeadsUp")
         
         // Calculate call amount
         val callAmount = currentBuyIn - myBet
@@ -42,12 +47,15 @@ class BettingStrategy(
                 val strength = handEvaluator.evaluateBestHand(myCards, communityCards)
                 val basePot = if (pot > 0) pot else smallBlind * 4 // minimal pot fallback
                 
-                // Position-based c-betting strategy
+                // Analyze board texture for c-betting strategy
+                val boardTexture = analyzeBoardTexture(communityCards)
+                
+                // Position-based c-betting strategy with increased aggression
                 val positionMultiplier = when (position) {
-                    PositionAnalyzer.Position.EARLY -> 0.8  // More conservative
-                    PositionAnalyzer.Position.MIDDLE -> 0.9
-                    PositionAnalyzer.Position.LATE -> 1.1   // More aggressive
-                    PositionAnalyzer.Position.BLINDS -> 0.85
+                    PositionAnalyzer.Position.EARLY -> 0.85  // Slightly more aggressive
+                    PositionAnalyzer.Position.MIDDLE -> 1.0   // Standard
+                    PositionAnalyzer.Position.LATE -> 1.2    // More aggressive on favorable boards
+                    PositionAnalyzer.Position.BLINDS -> 0.9
                 }
                 
                 val betSize = when (strength.rank) {
@@ -64,29 +72,39 @@ class BettingStrategy(
                         if (strength.value >= 10) baseBet else (baseBet * 0.8).roundToInt()
                     }
                     HandEvaluator.HandRank.ONE_PAIR -> {
-                        // Only bet strong pairs or top pair (Jacks or better)
+                        // More aggressive with pairs, especially on dry boards
                         if (strength.value >= 11) {
                             (basePot * StrategyConfig.postflopSmall * positionMultiplier).roundToInt()
+                        } else if (strength.value >= 8 && boardTexture.dry) {
+                            // C-bet weak pairs on dry boards for protection
+                            (basePot * StrategyConfig.postflopSmall * 0.7 * positionMultiplier).roundToInt()
                         } else {
-                            0 // Check weak pairs
+                            0 // Check weak pairs on wet boards
                         }
                     }
-                    HandEvaluator.HandRank.HIGH_CARD -> 0
+                    HandEvaluator.HandRank.HIGH_CARD -> {
+                        // C-bet high cards on favorable boards (A-high, K-high on dry boards)
+                        if (boardTexture.dry && boardTexture.highCard && position == PositionAnalyzer.Position.LATE) {
+                            (basePot * StrategyConfig.postflopSmall * 0.6).roundToInt()
+                        } else {
+                            0
+                        }
+                    }
                 }
                 val finalBet = min(myStack, maxOf(0, betSize))
-                println("  Post-flop bet sizing (pos mult: $positionMultiplier) -> $finalBet")
+                println("  Post-flop bet sizing (pos mult: $positionMultiplier, board: ${if (boardTexture.dry) "dry" else "wet"}) -> $finalBet")
                 return finalBet
             }
             println("  No bet to call, calculating open raise...")
-            val openRaise = calculateOpenRaise(myCards, communityCards, myStack, smallBlind, position)
+            val openRaise = calculateOpenRaise(myCards, communityCards, myStack, smallBlind, position, isHeadsUp)
             println("  Open raise decision: $openRaise")
             return openRaise
         }
         
         // Evaluate hand strength
         val hasStrong = handEvaluator.hasStrongHandWithCommunity(myCards, communityCards)
-        val hasDecent = handEvaluator.hasDecentHand(myCards)
-        val hasWeakPlayable = handEvaluator.hasWeakButPlayableHand(myCards)
+        val hasDecent = handEvaluator.hasDecentHand(myCards, isHeadsUp)
+        val hasWeakPlayable = handEvaluator.hasWeakButPlayableHand(myCards, isHeadsUp)
         val hasMarginal = handEvaluator.hasMarginalHand(myCards)
         
         println("  Hand Evaluation:")
@@ -170,13 +188,14 @@ class BettingStrategy(
         communityCards: JSONArray,
         myStack: Int,
         smallBlind: Int,
-        position: PositionAnalyzer.Position
+        position: PositionAnalyzer.Position,
+        isHeadsUp: Boolean = false
     ): Int {
-        println("    --- calculateOpenRaise() for ${position.name} ---")
+        println("    --- calculateOpenRaise() for ${position.name} (HU: $isHeadsUp) ---")
         
         val hasStrong = handEvaluator.hasStrongHandWithCommunity(myCards, communityCards)
-        val hasDecent = handEvaluator.hasDecentHand(myCards)
-        val hasWeakPlayable = handEvaluator.hasWeakButPlayableHand(myCards)
+        val hasDecent = handEvaluator.hasDecentHand(myCards, isHeadsUp)
+        val hasWeakPlayable = handEvaluator.hasWeakButPlayableHand(myCards, isHeadsUp)
         
         println("    Hand strength: Strong=$hasStrong, Decent=$hasDecent, WeakPlayable=$hasWeakPlayable")
         
@@ -307,4 +326,58 @@ class BettingStrategy(
             callAmount // Just call
         }
     }
+
+    /**
+     * Simple board texture analysis for c-betting decisions
+     */
+    private fun analyzeBoardTexture(communityCards: JSONArray): BoardTexture {
+        if (communityCards.length() < 3) {
+            return BoardTexture(dry = true, highCard = false)
+        }
+        
+        val ranks = mutableListOf<Int>()
+        val suits = mutableListOf<String>()
+        
+        for (i in 0 until communityCards.length()) {
+            val card = communityCards.getJSONObject(i)
+            ranks.add(CardUtils.getRankValue(card.getString("rank")))
+            suits.add(card.getString("suit"))
+        }
+        
+        val suitCounts = suits.groupingBy { it }.eachCount()
+        val rankCounts = ranks.groupingBy { it }.eachCount()
+        val sortedRanks = ranks.sorted()
+        
+        // Determine if board is dry (good for c-betting)
+        val hasPair = rankCounts.values.any { it >= 2 }
+        val flushDraw = suitCounts.values.any { it >= 2 }
+        val connected = sortedRanks.zipWithNext().any { (a, b) -> b - a <= 2 }
+        val highCard = ranks.any { it >= 10 } // Any 10+ on board
+        
+        val dry = !hasPair && !flushDraw && !connected
+        
+        return BoardTexture(dry = dry, highCard = highCard)
+    }
+    
+    data class BoardTexture(
+        val dry: Boolean,
+        val highCard: Boolean
+    )
+
+    /**
+     * Count active players in the hand
+     */
+    private fun countActivePlayers(players: JSONArray): Int {
+        var count = 0
+        for (i in 0 until players.length()) {
+            val player = players.getJSONObject(i)
+            val status = player.optString("status", "active")
+            // Count players who are still active in the hand
+            if (status == "active" || (status.isEmpty() && player.getInt("stack") > 0)) {
+                count++
+            }
+        }
+        return count
+    }
 }
+

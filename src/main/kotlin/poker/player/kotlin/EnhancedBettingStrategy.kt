@@ -38,6 +38,10 @@ class EnhancedBettingStrategy(
         val callAmount = currentBuyIn - myBet
         if (callAmount >= myStack) return myStack
         
+        // Detect heads-up situation
+        val isHeadsUp = countActivePlayers(players) == 2
+        println("    EnhancedBettingStrategy: Heads-up detection -> $isHeadsUp (${countActivePlayers(players)} active players)")
+        
         // Get stack strategy
         val stackStrategy = opponentModeling.getStackSizeStrategy(myStack, smallBlind)
         
@@ -45,7 +49,7 @@ class EnhancedBettingStrategy(
         if (callAmount <= 0) {
             return calculateOpeningStrategy(
                 myCards, communityCards, myStack, smallBlind, position, 
-                players, stackStrategy
+                players, stackStrategy, isHeadsUp
             )
         }
         
@@ -58,7 +62,7 @@ class EnhancedBettingStrategy(
         
         return calculateDefensiveStrategy(
             myCards, communityCards, myStack, callAmount, pot, smallBlind,
-            minimumRaise, position, players, adjustment, stackStrategy
+            minimumRaise, position, players, adjustment, stackStrategy, isHeadsUp
         )
     }
     
@@ -72,9 +76,10 @@ class EnhancedBettingStrategy(
         smallBlind: Int,
         position: PositionAnalyzer.Position,
         players: JSONArray,
-        stackStrategy: OpponentModeling.StackStrategy
+        stackStrategy: OpponentModeling.StackStrategy,
+        isHeadsUp: Boolean = false
     ): Int {
-        val handStrength = getHandStrength(myCards, communityCards)
+        val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
         
         // Short stack strategy - push/fold approach
         if (stackStrategy == OpponentModeling.StackStrategy.SHORT_STACK) {
@@ -112,12 +117,16 @@ class EnhancedBettingStrategy(
             PositionAnalyzer.Position.LATE -> when {
                 handStrength >= HandStrength.STRONG -> smallBlind * 6
                 handStrength >= HandStrength.DECENT -> smallBlind * 4
-                handStrength >= HandStrength.WEAK_PLAYABLE && isStealSpot(players) -> smallBlind * 3
+                handStrength >= HandStrength.WEAK_PLAYABLE && (isStealSpot(players) || isHeadsUp) -> smallBlind * 3
                 else -> 0
             }
             PositionAnalyzer.Position.BLINDS -> when {
                 handStrength >= HandStrength.STRONG -> smallBlind * 6
-                // Be more conservative from blinds - only open strong hands
+                // Heads-up: much wider opening range from SB (70-80% of hands)
+                isHeadsUp && handStrength >= HandStrength.DECENT -> smallBlind * 5
+                isHeadsUp && handStrength >= HandStrength.WEAK_PLAYABLE -> smallBlind * 3
+                // Non-heads-up: be more conservative from blinds
+                handStrength >= HandStrength.DECENT -> smallBlind * 4
                 else -> 0
             }
         }
@@ -139,7 +148,8 @@ class EnhancedBettingStrategy(
         position: PositionAnalyzer.Position,
         players: JSONArray,
         adjustment: OpponentModeling.StrategicAdjustment,
-        stackStrategy: OpponentModeling.StackStrategy
+        stackStrategy: OpponentModeling.StackStrategy,
+        isHeadsUp: Boolean = false
     ): Int {
         // Pre-flop quick counters: anti-limp punish and squeeze plays
         if (communityCards.length() == 0) {
@@ -156,7 +166,7 @@ class EnhancedBettingStrategy(
 
             // Anti-limp punish: limped pot (no raise), late position, decent+ hand
             if (StrategyConfig.enableAntiLimp && !isRaisePreflop && hasCallers && position == PositionAnalyzer.Position.LATE) {
-                val handStrength = getHandStrength(myCards, communityCards)
+                val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
                 if (handStrength >= HandStrength.DECENT) {
                     val limpers = atBuyIn - 1 // exclude big blind
                     val isoSize = smallBlind * (4 + max(0, limpers))
@@ -166,7 +176,7 @@ class EnhancedBettingStrategy(
 
             // Squeeze play: raised pot with at least one caller
             if (StrategyConfig.enableSqueeze && isRaisePreflop && hasCallers && (position == PositionAnalyzer.Position.LATE || position == PositionAnalyzer.Position.BLINDS)) {
-                val handStrength = getHandStrength(myCards, communityCards)
+                val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
                 if (handStrength >= HandStrength.STRONG) {
                     val callers = atBuyIn - 1 // exclude raiser
                     val target = callAmount + minimumRaise * (2 + max(0, callers))
@@ -175,7 +185,7 @@ class EnhancedBettingStrategy(
             }
         }
 
-        val handStrength = getHandStrength(myCards, communityCards)
+        val handStrength = getHandStrength(myCards, communityCards, isHeadsUp)
         val potOdds = pot.toDouble() / (pot + callAmount)
         val adjustedCallThreshold = adjustment.callThreshold
         
@@ -198,25 +208,73 @@ class EnhancedBettingStrategy(
             }
             
             HandStrength.DECENT -> {
-                // Decent hands - position and pot odds dependent
+                // Decent hands - position and pot odds dependent with stricter sizing discipline
                 val threshold = positionAnalyzer.getSmallBetThreshold(position, pot) * adjustedCallThreshold
-                if (callAmount <= threshold) callAmount else 0
-            }
-            
-            HandStrength.WEAK_PLAYABLE -> {
-                // Weak playable - only call very small bets
-                if (callAmount <= smallBlind * 2 * adjustedCallThreshold) callAmount else 0
-            }
-            
-            HandStrength.MARGINAL -> {
-                // Marginal hands - bluff potential or fold
-                val isBluffSpot = isGoodBluffSpot(position, pot, callAmount, adjustment)
-                if (isBluffSpot && StrategyConfig.bluffRaiseEnabled) {
-                    calculateBluffRaise(callAmount, minimumRaise, myStack, adjustment)
-                } else if (callAmount <= pot / 4 * adjustedCallThreshold && random.nextFloat() < 0.3) {
+                val potOddsRequired = callAmount.toDouble() / (pot + callAmount)
+                
+                // Stricter defense against 25-40% pot bets postflop
+                if (communityCards.length() >= 3 && potOddsRequired >= 0.25 && potOddsRequired <= 0.4) {
+                    // Need strong decent hand (pair, strong draw, or two overs + backdoor)
+                    val hasPair = handEvaluator.evaluateBestHand(myCards, communityCards).rank.value >= 2
+                    val hasDraws = hasDrawingPotential(myCards, communityCards)
+                    val hasTwoOvers = hasTwoOvercards(myCards, communityCards)
+                    
+                    if (hasPair || hasDraws || hasTwoOvers) {
+                        callAmount
+                    } else {
+                        0 // Fold weak decent hands vs medium-sized bets
+                    }
+                } else if (isHeadsUp && communityCards.length() == 0 && random.nextFloat() < 0.3) {
+                    // 3-bet with decent hands in heads-up preflop
+                    val raiseSize = (callAmount + minimumRaise * 2.5 * adjustment.valueBetSizing).toInt()
+                    min(myStack, raiseSize)
+                } else if (callAmount <= threshold) {
                     callAmount
                 } else {
                     0
+                }
+            }
+            
+            HandStrength.WEAK_PLAYABLE -> {
+                // Heads-up: much wider calling range (defend 65-75% vs min-raises) 
+                if (isHeadsUp && communityCards.length() == 0 && callAmount <= smallBlind * 3) {
+                    callAmount // Call min-raises with weak playable in heads-up
+                } else if (callAmount <= smallBlind * 2 * adjustedCallThreshold) {
+                    callAmount
+                } else {
+                    0
+                }
+            }
+            
+            HandStrength.MARGINAL -> {
+                // Improved turn/river discipline: Don't call without equity
+                val street = when (communityCards.length()) {
+                    4 -> "turn"
+                    5 -> "river" 
+                    else -> "other"
+                }
+                
+                val potOddsRequired = callAmount.toDouble() / (pot + callAmount)
+                
+                // On turn/river, need good reason to call with marginal hands
+                if (street == "turn" || street == "river") {
+                    // Tighter calling on turn/river - need pair, strong draw, or good price
+                    val hasDrawingPotential = hasDrawingPotential(myCards, communityCards)
+                    if (hasDrawingPotential && potOddsRequired <= 0.25) {
+                        callAmount // Call with draws at good price
+                    } else {
+                        0 // Fold marginal hands on turn/river vs bets
+                    }
+                } else {
+                    // Preflop/flop: more liberal with marginal hands
+                    val isBluffSpot = isGoodBluffSpot(position, pot, callAmount, adjustment)
+                    if (isBluffSpot && StrategyConfig.bluffRaiseEnabled) {
+                        calculateBluffRaise(callAmount, minimumRaise, myStack, adjustment)
+                    } else if (callAmount <= pot / 4 * adjustedCallThreshold && random.nextFloat() < 0.3) {
+                        callAmount
+                    } else {
+                        0
+                    }
                 }
             }
             
@@ -227,7 +285,7 @@ class EnhancedBettingStrategy(
     /**
      * Enhanced hand strength classification
      */
-    private fun getHandStrength(myCards: JSONArray, communityCards: JSONArray): HandStrength {
+    private fun getHandStrength(myCards: JSONArray, communityCards: JSONArray, isHeadsUp: Boolean = false): HandStrength {
         return when {
             handEvaluator.hasStrongHandWithCommunity(myCards, communityCards) -> {
                 // Further classify strong hands
@@ -235,8 +293,8 @@ class EnhancedBettingStrategy(
             }
             // If not strong but is premium (like AK), still classify as strong  
             isPremiumHand(myCards) -> HandStrength.STRONG
-            handEvaluator.hasDecentHand(myCards) -> HandStrength.DECENT
-            handEvaluator.hasWeakButPlayableHand(myCards) -> HandStrength.WEAK_PLAYABLE
+            handEvaluator.hasDecentHand(myCards, isHeadsUp) -> HandStrength.DECENT
+            handEvaluator.hasWeakButPlayableHand(myCards, isHeadsUp) -> HandStrength.WEAK_PLAYABLE
             handEvaluator.hasMarginalHand(myCards) -> HandStrength.MARGINAL
             else -> HandStrength.TRASH
         }
@@ -432,6 +490,30 @@ class EnhancedBettingStrategy(
         if (sortedRanks.contains(14) && sortedRanks.contains(2) && sortedRanks.contains(3)) return true
         
         return false
+    }
+    
+    /**
+     * Check if we have two overcards to the board (for calling medium-sized bets)
+     */
+    private fun hasTwoOvercards(myCards: JSONArray, communityCards: JSONArray): Boolean {
+        if (myCards.length() != 2 || communityCards.length() < 3) return false
+        
+        val card1 = myCards.getJSONObject(0)
+        val card2 = myCards.getJSONObject(1)
+        val myRank1 = CardUtils.getRankValue(card1.getString("rank"))
+        val myRank2 = CardUtils.getRankValue(card2.getString("rank"))
+        
+        // Get highest card on board
+        var highestBoardCard = 0
+        for (i in 0 until communityCards.length()) {
+            val boardRank = CardUtils.getRankValue(communityCards.getJSONObject(i).getString("rank"))
+            if (boardRank > highestBoardCard) {
+                highestBoardCard = boardRank
+            }
+        }
+        
+        // Both our cards must be higher than the highest board card
+        return myRank1 > highestBoardCard && myRank2 > highestBoardCard
     }
     
     private fun isCoordinatedBoard(ranks: List<Int>): Boolean {
