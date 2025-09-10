@@ -138,6 +138,53 @@ class Player {
             else -> "BET $betAmount"
         }
         println("$decisionId FINAL DECISION: $actionDescription")
+        if (StrategyConfig.structuredLogs) {
+            val handClass = when {
+                handEvaluator.hasStrongHandWithCommunity(myCards, community) -> "STRONG"
+                handEvaluator.hasDecentHand(myCards) -> "DECENT"
+                handEvaluator.hasWeakButPlayableHand(myCards) -> "WEAK"
+                handEvaluator.hasMarginalHand(myCards) -> "MARGINAL"
+                else -> "TRASH"
+            }
+            val evalRank = if (community.length() >= 3) {
+                handEvaluator.evaluateBestHand(myCards, community).rank.name
+            } else {
+                "NA"
+            }
+            val json = org.json.JSONObject()
+                .put("t", "dec")
+                .put("game", gameId)
+                .put("rnd", round)
+                .put("st", street)
+                .put("pos", position.name)
+                .put("opp", countActivePlayers(players) - 1)
+                .put("mode", StrategyConfig.mode().name)
+                .put("stack", myStack)
+                .put("pot", pot)
+                .put("call", callAmount)
+                .put("minR", minimumRaise)
+                .put("hand", handClass)
+                .put("eval", evalRank)
+                .put("cfg", org.json.JSONObject()
+                    .put("risk", StrategyConfig.riskMoodProbability)
+                    .put("sbm", StrategyConfig.smallBetThresholdMultiplier)
+                    .put("ps", StrategyConfig.postflopSmall)
+                    .put("pm", StrategyConfig.postflopMed)
+                    .put("pb", StrategyConfig.postflopBig)
+                    .put("al", StrategyConfig.enableAntiLimp)
+                    .put("sq", StrategyConfig.enableSqueeze)
+                )
+                .put("act", when {
+                    callAmount == 0 && betAmount == 0 -> "CHECK"
+                    betAmount == 0 -> "FOLD"
+                    betAmount == callAmount -> "CALL"
+                    betAmount > callAmount && callAmount > 0 -> "RAISE"
+                    callAmount == 0 && betAmount > 0 -> "BET"
+                    else -> "UNK"
+                })
+                .put("amt", betAmount)
+            Logger.logStructured(json)
+        }
         println("$decisionId Action Tracking Updated: lastAction=$lastAction, lastBetAmount=$lastBetAmount")
         println("=== END BETTING ANALYSIS $decisionId ===\n")
         
