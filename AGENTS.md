@@ -84,6 +84,11 @@ Notes
 - `Player.version()` includes the active mode (e.g., `v1.2 (STANDARD)`) for quick verification.
 - You can globally dial risk/thresholds via `STRAT_RISK_FREQ` and `STRAT_SMALLBET_MULT` without changing the mode.
 
+#### Quick Reference (defaults)
+- TIGHT: risk 5%, small-bet threshold 0.8×, late opens strong/decent only
+- STANDARD: risk 10%, small-bet threshold 1.0×, late opens strong/decent only
+- LAG: risk 25%, small-bet threshold 1.2×, late opens allow weak‑but‑playable
+
 ## Commit & Pull Request Guidelines
 - Commits: imperative, concise subject (e.g., "Add betting strategy and tests").
 - PRs must include: scope/intent, before/after behavior, linked issues, test evidence (`./gradlew test` output). Update `Player.version()` when changing strategy.
