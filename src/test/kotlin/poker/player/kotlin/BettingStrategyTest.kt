@@ -105,7 +105,7 @@ class BettingStrategyTest {
             position = PositionAnalyzer.Position.MIDDLE
         )
         
-        assertEquals(70, bet) // call (50) + minimum raise (20)
+        assertEquals(90, bet) // call (50) + 2 * minimum raise (40)
     }
     
     @Test
@@ -122,7 +122,7 @@ class BettingStrategyTest {
             position = PositionAnalyzer.Position.LATE
         )
         
-        assertEquals(40, bet) // Raise (call 20 + minimum raise 20)
+        assertEquals(60, bet) // Raise (call 20 + 2 * minimum raise 40)
     }
     
     @Test
@@ -143,8 +143,8 @@ class BettingStrategyTest {
     }
     
     @Test
-    fun `calculateBet calls small bets more liberally`() {
-        val myCards = cards("6" to "spades", "8" to "hearts") // Weak hand
+    fun `calculateBet folds weak hands to small bets`() {
+        val myCards = cards("2" to "spades", "5" to "hearts") // Truly weak hand
         val bet = bettingStrategy.calculateBet(
             myCards = myCards,
             myStack = 1000,
@@ -156,7 +156,7 @@ class BettingStrategyTest {
             position = PositionAnalyzer.Position.LATE
         )
         
-        assertEquals(20, bet) // Call small bet even with weak hand
+        assertEquals(0, bet) // Fold weak hand - no more unconditional small-bet calls
     }
     
     @Test
@@ -246,6 +246,6 @@ class BettingStrategyTest {
             position = PositionAnalyzer.Position.MIDDLE
         )
         
-        assertEquals(15, bet) // Call amount (10-5=5) + minimum raise (10) = 15
+        assertEquals(25, bet) // Call amount (10-5=5) + 2 * minimum raise (20) = 25
     }
 }
