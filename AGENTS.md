@@ -54,6 +54,7 @@ Requirements: Java 21 toolchain (Gradle config manages this). For tests, ensure 
 - `STRAT_RISK_FREQ` = `0.0–0.5` overrides risk mood probability (default by mode: TIGHT 0.05, STANDARD 0.10, LAG 0.25).
 - `STRAT_SMALLBET_MULT` = `0.5–2.0` scales position small-bet call thresholds.
 - `STRAT_BLUFF_RAISE` = `off|on` disables/enables bluff-raises in risk mood (default on).
+- `STRAT_RAINMAN` = `off|on` disables/enables Rain Man API usage (default on). For CI/offline, set to `off`.
 
 Examples:
 - `STRAT_MODE=TIGHT ./gradlew run`

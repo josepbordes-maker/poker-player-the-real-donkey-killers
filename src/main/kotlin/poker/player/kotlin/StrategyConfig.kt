@@ -18,7 +18,8 @@ object StrategyConfig {
         val mode: String? = null,
         val riskFreq: String? = null,
         val smallBetMult: String? = null,
-        val bluffRaise: String? = null
+        val bluffRaise: String? = null,
+        val rainMan: String? = null
     )
 
     private val fileConfig: FileConfig by lazy {
@@ -31,7 +32,8 @@ object StrategyConfig {
                 mode = json.optString("mode", null),
                 riskFreq = json.opt("riskFreq")?.toString(),
                 smallBetMult = json.opt("smallBetMult")?.toString(),
-                bluffRaise = json.opt("bluffRaise")?.toString()
+                bluffRaise = json.opt("bluffRaise")?.toString(),
+                rainMan = json.opt("rainMan")?.toString()
             )
         } catch (_: Exception) {
             FileConfig()
@@ -73,6 +75,12 @@ object StrategyConfig {
 
     val bluffRaiseEnabled: Boolean
         get() = when (envOrProp("STRAT_BLUFF_RAISE", fileConfig.bluffRaise)?.trim()?.lowercase()) {
+            "0", "false", "off", "no" -> false
+            else -> true
+        }
+
+    val enableRainMan: Boolean
+        get() = when (envOrProp("STRAT_RAINMAN", fileConfig.rainMan)?.trim()?.lowercase()) {
             "0", "false", "off", "no" -> false
             else -> true
         }

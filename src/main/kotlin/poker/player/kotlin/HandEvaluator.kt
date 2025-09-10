@@ -4,8 +4,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
 
-class HandEvaluator {
-    private val rainManService = RainManService()
+class HandEvaluator(
+    private val rainManService: RainManService = RainManService()
+) {
     
     // Poker hand rankings from highest to lowest
     // Updated to match Rain Man API ranking system (0-8)

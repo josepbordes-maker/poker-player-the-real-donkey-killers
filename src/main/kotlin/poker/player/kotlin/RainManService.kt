@@ -1,7 +1,6 @@
 package poker.player.kotlin
 
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -16,13 +15,12 @@ import org.slf4j.LoggerFactory
  * Service to interact with the Rain Man API for hand ranking
  * API Documentation: https://www.leanpoker.org/docs/api/rain-man
  */
-class RainManService {
-    private val logger = LoggerFactory.getLogger(RainManService::class.java)
-    private val client = HttpClient(CIO) {
-        engine {
-            requestTimeout = 5000 // 5 second timeout
-        }
+class RainManService(
+    private val client: HttpClient = HttpClient(CIO) {
+        engine { requestTimeout = 5000 }
     }
+) {
+    private val logger = LoggerFactory.getLogger(RainManService::class.java)
     
     data class RainManResponse(
         val rank: Int,
@@ -38,6 +36,7 @@ class RainManService {
      * Returns null if API call fails or times out
      */
     fun rankHand(cards: JSONArray): RainManResponse? {
+        if (!StrategyConfig.enableRainMan) return null
         return try {
             runBlocking {
                 withTimeoutOrNull(3000) { // 3 second timeout for the call
@@ -95,7 +94,5 @@ class RainManService {
     /**
      * Close the HTTP client when done
      */
-    fun close() {
-        client.close()
-    }
+    fun close() { client.close() }
 }
