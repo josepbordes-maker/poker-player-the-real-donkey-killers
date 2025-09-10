@@ -591,6 +591,18 @@ class DynamicStrategyManager(
             // Decent hands - position and pot odds dependent
             handStrength.estimatedEquity > 0.4 -> {
                 if (callAmount > 0) {
+                    // SB discipline: preflop facing a raise from blinds, fold marginal offsuit hands more
+                    if (communityCards.length() == 0 && position == PositionAnalyzer.Position.BLINDS) {
+                        // Require at least "strong" preflop signal to continue from SB vs raise
+                        val isStrongPre = handEvaluator.hasStrongHandWithCommunity(myCards, communityCards)
+                        if (!isStrongPre) {
+                            return DynamicBetDecision(
+                                action = "fold",
+                                amount = 0,
+                                reasoning = "SB discipline: fold marginal hand facing raise"
+                            )
+                        }
+                    }
                     // Check if call amount is reasonable compared to pot
                     val potOdds = callAmount.toDouble() / (pot + callAmount)
                     val threshold = when (position) {
