@@ -26,7 +26,9 @@ object StrategyConfig {
         val antiLimp: String? = null,
         val squeeze: String? = null,
         val structuredLogs: String? = null,
-        val quietLogs: String? = null
+        val quietLogs: String? = null,
+        val conservativeMultiplayer: String? = null,
+        val hallOfFameSize: String? = null
     )
 
     private val fileConfig: FileConfig by lazy {
@@ -47,7 +49,9 @@ object StrategyConfig {
                 antiLimp = json.opt("antiLimp")?.toString(),
                 squeeze = json.opt("squeeze")?.toString(),
                 structuredLogs = json.opt("structuredLogs")?.toString(),
-                quietLogs = json.opt("quietLogs")?.toString()
+                quietLogs = json.opt("quietLogs")?.toString(),
+                conservativeMultiplayer = json.opt("conservativeMultiplayer")?.toString(),
+                hallOfFameSize = json.opt("hallOfFameSize")?.toString()
             )
         } catch (_: Exception) {
             FileConfig()
@@ -140,5 +144,18 @@ object StrategyConfig {
         get() = when (envOrProp("STRAT_QUIET_LOGS", fileConfig.quietLogs)?.trim()?.lowercase()) {
             "1", "true", "on", "yes" -> true
             else -> false
+        }
+
+    // Research-based settings from evolutionary poker paper
+    val conservativeMultiplayer: Boolean
+        get() = when (envOrProp("STRAT_CONSERVATIVE_MULTIPLAYER", fileConfig.conservativeMultiplayer)?.trim()?.lowercase()) {
+            "0", "false", "off", "no" -> false
+            else -> true  // Default to true for survival advantage
+        }
+
+    val hallOfFameSize: Int
+        get() {
+            val override = envOrProp("STRAT_HALL_OF_FAME_SIZE", fileConfig.hallOfFameSize)?.toIntOrNull()
+            return (override ?: 50).coerceIn(10, 200)  // Research showed large hall of fame worked best
         }
 }

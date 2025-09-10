@@ -244,7 +244,8 @@ class Player {
 
     fun version(): String {
         val mode = StrategyConfig.mode().name
-        return "Real Donkey Killer v3.4 - Optimized Quick Wins ($mode)"
+        val conservativeMode = if (StrategyConfig.conservativeMultiplayer) " + Research Conservative" else ""
+        return "Real Donkey Killer v3.5 - Research-Based Survival Strategy ($mode$conservativeMode)"
     }
     
     /**
@@ -290,6 +291,9 @@ class Player {
                     },
                     stackSize = playerStack
                 )
+                
+                // Update hall of fame with research-based opponent tracking
+                opponentModeling.updateHallOfFame(playerId)
             }
         }
     }

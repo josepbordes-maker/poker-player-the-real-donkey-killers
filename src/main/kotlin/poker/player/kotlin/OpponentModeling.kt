@@ -40,6 +40,10 @@ class OpponentModeling {
     private val playerStats = mutableMapOf<String, PlayerStats>()
     private val gameHistory = mutableMapOf<String, MutableList<GameAction>>()
     
+    // Research-based Hall of Fame for best opponent models
+    private val hallOfFame = mutableListOf<PlayerStats>()
+    private val hallOfFameMap = mutableMapOf<String, Int>() // playerId to hall index
+    
     data class GameAction(
         val playerId: String,
         val action: String, // "fold", "call", "raise", "all_in"
@@ -273,5 +277,86 @@ class OpponentModeling {
             Adjustments: Bluff ${(adjustment.bluffFrequency * 100).toInt()}%, Value Bet ${(adjustment.valueBetSizing * 100).toInt()}%
             On Tilt: ${isPlayerOnTilt(playerId)}
         """.trimIndent()
+    }
+    
+    /**
+     * Research-based Hall of Fame system for tracking best opponent models
+     * Based on evolutionary poker paper findings
+     */
+    fun updateHallOfFame(playerId: String) {
+        val stats = playerStats[playerId] ?: return
+        
+        // Only add players with sufficient data
+        if (stats.handsPlayed < 10) return
+        
+        val hallSize = StrategyConfig.hallOfFameSize
+        
+        // Calculate player "fitness" score based on various factors
+        val fitnessScore = calculatePlayerFitness(stats)
+        
+        val existingIndex = hallOfFameMap[playerId]
+        if (existingIndex != null) {
+            // Update existing hall of fame entry
+            hallOfFame[existingIndex] = stats.copy()
+        } else if (hallOfFame.size < hallSize) {
+            // Add to hall of fame if there's space
+            hallOfFame.add(stats.copy())
+            hallOfFameMap[playerId] = hallOfFame.size - 1
+        } else {
+            // Find weakest player in hall of fame to potentially replace
+            val weakestIndex = hallOfFame.indices.minByOrNull { calculatePlayerFitness(hallOfFame[it]) }
+            if (weakestIndex != null) {
+                val weakestScore = calculatePlayerFitness(hallOfFame[weakestIndex])
+                if (fitnessScore > weakestScore) {
+                    // Replace weakest with this better player
+                    val oldPlayerId = findPlayerIdByStats(hallOfFame[weakestIndex])
+                    oldPlayerId?.let { hallOfFameMap.remove(it) }
+                    hallOfFame[weakestIndex] = stats.copy()
+                    hallOfFameMap[playerId] = weakestIndex
+                }
+            }
+        }
+    }
+    
+    private fun calculatePlayerFitness(stats: PlayerStats): Double {
+        // Fitness based on data quality and exploitability
+        val dataQuality = min(1.0, stats.handsPlayed / 50.0)
+        val exploitability = when (getPlayerTypeFromStats(stats)) {
+            PlayerType.LOOSE_PASSIVE -> 0.9  // Very exploitable
+            PlayerType.TIGHT_PASSIVE -> 0.7  // Moderately exploitable
+            PlayerType.LOOSE_AGGRESSIVE -> 0.5  // Less exploitable
+            PlayerType.TIGHT_AGGRESSIVE -> 0.3  // Least exploitable
+            PlayerType.UNKNOWN -> 0.1
+        }
+        return dataQuality * exploitability
+    }
+    
+    private fun findPlayerIdByStats(target: PlayerStats): String? {
+        return playerStats.entries.find { it.value == target }?.key
+    }
+    
+    private fun getPlayerTypeFromStats(stats: PlayerStats): PlayerType {
+        if (stats.handsPlayed < 10) return PlayerType.UNKNOWN
+        
+        val vpip = (stats.preflopCalls + stats.preflopRaises).toDouble() / stats.handsPlayed
+        val pfr = stats.preflopRaises.toDouble() / stats.handsPlayed
+        val isLoose = vpip > 0.25
+        val isAggressive = pfr > 0.15
+        
+        return when {
+            isLoose && isAggressive -> PlayerType.LOOSE_AGGRESSIVE
+            isLoose && !isAggressive -> PlayerType.LOOSE_PASSIVE
+            !isLoose && isAggressive -> PlayerType.TIGHT_AGGRESSIVE
+            !isLoose && !isAggressive -> PlayerType.TIGHT_PASSIVE
+            else -> PlayerType.UNKNOWN
+        }
+    }
+    
+    /**
+     * Get hall of fame insights for strategic decisions
+     */
+    fun getHallOfFameInsights(): String {
+        return "Hall of Fame: ${hallOfFame.size}/${StrategyConfig.hallOfFameSize} models, " +
+               "Avg exploitability: ${hallOfFame.map { calculatePlayerFitness(it) }.average().takeIf { !it.isNaN() } ?: 0.0}"
     }
 }

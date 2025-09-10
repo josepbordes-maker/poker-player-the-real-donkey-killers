@@ -1,14 +1,16 @@
 {
   "mode": "STANDARD",
-  "riskFreq": 0.12,
-  "smallBetMult": 1.0,
-  "bluffRaise": true,
+  "riskFreq": 0.08,
+  "smallBetMult": 0.85,
+  "bluffRaise": false,
   "rainMan": true,
-  "postflopSmall": 0.35,
-  "postflopMed": 0.55,
-  "postflopBig": 0.75,
+  "postflopSmall": 0.30,
+  "postflopMed": 0.50,
+  "postflopBig": 0.65,
   "antiLimp": true,
-  "squeeze": true,
+  "squeeze": false,
   "structuredLogs": true,
-  "quietLogs": true
+  "quietLogs": true,
+  "conservativeMultiplayer": true,
+  "hallOfFameSize": 50
 }

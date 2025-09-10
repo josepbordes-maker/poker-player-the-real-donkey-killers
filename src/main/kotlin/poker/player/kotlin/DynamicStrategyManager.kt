@@ -109,6 +109,10 @@ class DynamicStrategyManager(
                 myCards, communityCards, myStack, myBet, currentBuyIn, pot,
                 smallBlind, minimumRaise, position, gameContext, handStrength, opponentProfile
             )
+            StrategicMode.RESEARCH_CONSERVATIVE -> calculateResearchConservativeDecision(
+                myCards, communityCards, myStack, myBet, currentBuyIn, pot,
+                smallBlind, minimumRaise, position, gameContext, handStrength, opponentProfile
+            )
             StrategicMode.BALANCED_GTO -> calculateGTOBalancedDecision(
                 myCards, communityCards, myStack, myBet, currentBuyIn, pot,
                 smallBlind, minimumRaise, position, gameContext, handStrength
@@ -293,6 +297,11 @@ class DynamicStrategyManager(
         opponentProfile: OpponentProfile
     ): StrategicMode {
         return when {
+            // Research-based conservative multiplayer mode (NEW!)
+            StrategyConfig.conservativeMultiplayer && 
+            opponentProfile.totalOpponents >= 5 &&
+            opponentProfile.aggressivePlayers >= 2 -> StrategicMode.RESEARCH_CONSERVATIVE
+            
             // Ultra-tight mode for survival spots (only in very extreme conditions)
             gameContext.tournamentPhase == TournamentPhase.BUBBLE && 
             gameContext.stackToBlindRatio < 8 -> StrategicMode.ULTRA_TIGHT
@@ -323,7 +332,8 @@ class DynamicStrategyManager(
         PUSH_FOLD,             // Short stack strategy
         ICM_AWARE,             // Tournament considerations
         META_ADAPTIVE,         // Counter-exploitative
-        BALANCED_GTO           // Game theory optimal
+        BALANCED_GTO,          // Game theory optimal
+        RESEARCH_CONSERVATIVE  // Research-based conservative multi-player strategy
     }
     
     /**
@@ -828,6 +838,96 @@ class DynamicStrategyManager(
                 TableImage.LOOSE -> 0.8  // Bluffs less effective, value bets more effective
                 TableImage.TILTED -> 0.5  // Very negative image
                 else -> 1.0
+            }
+        }
+    }
+    
+    /**
+     * Research-based conservative strategy for multi-player scenarios
+     * Based on evolutionary poker paper findings that conservative play 
+     * outperforms aggressive play when multiple aggressive players are present
+     */
+    private fun calculateResearchConservativeDecision(
+        myCards: JSONArray,
+        communityCards: JSONArray,
+        myStack: Int,
+        myBet: Int,
+        currentBuyIn: Int,
+        pot: Int,
+        smallBlind: Int,
+        minimumRaise: Int,
+        position: PositionAnalyzer.Position,
+        gameContext: GameContext,
+        handStrength: EnhancedHandStrength,
+        opponentProfile: OpponentProfile
+    ): DynamicBetDecision {
+        
+        val callAmount = currentBuyIn - myBet
+        
+        // Research findings: Conservative play survives aggressive elimination phases
+        // Only play premium hands and fold most marginal situations
+        return when {
+            // Premium hands - still play them but more cautiously
+            handStrength.estimatedEquity > 0.65 -> {
+                if (callAmount > 0) {
+                    // Call with premium hands, avoid big raises against multiple opponents
+                    if (opponentProfile.aggressivePlayers >= 3 && callAmount > smallBlind * 8) {
+                        DynamicBetDecision(
+                            action = "fold",
+                            amount = 0,
+                            reasoning = "Research Conservative: Avoid big pots vs multiple aggressive players"
+                        )
+                    } else {
+                        DynamicBetDecision(
+                            action = "call",
+                            amount = callAmount,
+                            reasoning = "Research Conservative: Call with premium vs manageable aggression"
+                        )
+                    }
+                } else {
+                    // Small value bets only
+                    DynamicBetDecision(
+                        action = "bet",
+                        amount = min(myStack, smallBlind * 3),
+                        reasoning = "Research Conservative: Small value bet with premium"
+                    )
+                }
+            }
+            
+            // Strong hands - much more conservative
+            handStrength.estimatedEquity > 0.5 -> {
+                if (callAmount > 0) {
+                    // Very tight calling standards
+                    if (callAmount <= smallBlind * 3 && opponentProfile.aggressivePlayers <= 1) {
+                        DynamicBetDecision(
+                            action = "call",
+                            amount = callAmount,
+                            reasoning = "Research Conservative: Call small bet with strong hand vs few aggro players"
+                        )
+                    } else {
+                        DynamicBetDecision(
+                            action = "fold",
+                            amount = 0,
+                            reasoning = "Research Conservative: Avoid confrontation with strong hand vs aggression"
+                        )
+                    }
+                } else {
+                    // Check most of the time, small bets occasionally
+                    DynamicBetDecision(
+                        action = "check",
+                        amount = 0,
+                        reasoning = "Research Conservative: Check to avoid building big pots"
+                    )
+                }
+            }
+            
+            // All other hands - fold aggressively
+            else -> {
+                DynamicBetDecision(
+                    action = "fold",
+                    amount = 0,
+                    reasoning = "Research Conservative: Fold marginal hands - let aggressive players eliminate each other"
+                )
             }
         }
     }
