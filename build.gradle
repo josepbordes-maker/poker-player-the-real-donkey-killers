@@ -42,4 +42,11 @@ task stage {
 
 test {
     useJUnitPlatform()
+    // Run tests in parallel where safe (class-level concurrency)
+    systemProperty "junit.jupiter.execution.parallel.enabled", "true"
+    systemProperty "junit.jupiter.execution.parallel.mode.default", "concurrent"
+    systemProperty "junit.jupiter.execution.parallel.mode.classes.default", "concurrent"
+
+    // Fork multiple processes based on available CPUs
+    maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors() - 1)
 }

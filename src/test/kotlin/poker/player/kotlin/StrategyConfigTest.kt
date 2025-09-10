@@ -2,9 +2,12 @@ package poker.player.kotlin
 
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@Execution(SAME_THREAD)
 class StrategyConfigTest {
     private val handEvaluator = HandEvaluator()
     private val positionAnalyzer = PositionAnalyzer()
@@ -39,4 +42,3 @@ class StrategyConfigTest {
         }
     }
 }
-
