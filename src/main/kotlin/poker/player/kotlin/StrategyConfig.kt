@@ -25,7 +25,8 @@ object StrategyConfig {
         val postBig: String? = null,
         val antiLimp: String? = null,
         val squeeze: String? = null,
-        val structuredLogs: String? = null
+        val structuredLogs: String? = null,
+        val quietLogs: String? = null
     )
 
     private val fileConfig: FileConfig by lazy {
@@ -45,7 +46,8 @@ object StrategyConfig {
                 postBig = json.opt("postflopBig")?.toString(),
                 antiLimp = json.opt("antiLimp")?.toString(),
                 squeeze = json.opt("squeeze")?.toString(),
-                structuredLogs = json.opt("structuredLogs")?.toString()
+                structuredLogs = json.opt("structuredLogs")?.toString(),
+                quietLogs = json.opt("quietLogs")?.toString()
             )
         } catch (_: Exception) {
             FileConfig()
@@ -130,6 +132,12 @@ object StrategyConfig {
 
     val structuredLogs: Boolean
         get() = when (envOrProp("STRAT_STRUCTURED_LOGS", fileConfig.structuredLogs)?.trim()?.lowercase()) {
+            "1", "true", "on", "yes" -> true
+            else -> false
+        }
+
+    val quietLogs: Boolean
+        get() = when (envOrProp("STRAT_QUIET_LOGS", fileConfig.quietLogs)?.trim()?.lowercase()) {
             "1", "true", "on", "yes" -> true
             else -> false
         }

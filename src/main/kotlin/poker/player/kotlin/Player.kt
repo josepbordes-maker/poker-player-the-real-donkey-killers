@@ -137,7 +137,7 @@ class Player {
             betAmount < callAmount && callAmount > 0 -> "ALL-IN $betAmount (short of call)"
             else -> "BET $betAmount"
         }
-        println("$decisionId FINAL DECISION: $actionDescription")
+        if (!StrategyConfig.quietLogs) println("$decisionId FINAL DECISION: $actionDescription")
         if (StrategyConfig.structuredLogs) {
             val handClass = when {
                 handEvaluator.hasStrongHandWithCommunity(myCards, community) -> "STRONG"
@@ -185,15 +185,24 @@ class Player {
                 .put("amt", betAmount)
             Logger.logStructured(json)
         }
-        println("$decisionId Action Tracking Updated: lastAction=$lastAction, lastBetAmount=$lastBetAmount")
-        println("=== END BETTING ANALYSIS $decisionId ===\n")
+        if (!StrategyConfig.quietLogs) println("$decisionId Action Tracking Updated: lastAction=$lastAction, lastBetAmount=$lastBetAmount")
+        if (!StrategyConfig.quietLogs) println("=== END BETTING ANALYSIS $decisionId ===\n")
         
         return betAmount
     }
     fun showdown(game_state: JSONObject) {
-        println("\n=== SHOWDOWN CALLED ===")
+        if (!StrategyConfig.quietLogs) println("\n=== SHOWDOWN CALLED ===")
+        // Structured showdown log
+        if (StrategyConfig.structuredLogs) {
+            val gameId = game_state.optString("game_id", "")
+            val json = org.json.JSONObject()
+                .put("t", "sd")
+                .put("game", gameId)
+                .put("info", "showdown")
+            Logger.logStructured(json)
+        }
         gameStateManager.processShowdown(game_state)
-        println("=== SHOWDOWN COMPLETE ===\n")
+        if (!StrategyConfig.quietLogs) println("=== SHOWDOWN COMPLETE ===\n")
     }
     
     private fun formatCards(cards: JSONArray): String {
